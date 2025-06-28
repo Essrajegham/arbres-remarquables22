@@ -1,0 +1,110 @@
+/* Login.css */
+
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #e8f5e9, #f5f5f5);
+  padding: 20px;
+}
+/* Dans votre fichier de styles des formulaires */
+.form-container {
+  width: 100%;
+  max-width: 500px;
+  margin: 2rem auto;
+  padding: 2rem;
+}
+.login-card {
+  background: #ffffff;
+  padding: 48px 36px;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 420px;
+  animation: fadeIn 0.6s ease-out;
+  transition: all 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-card h1 {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 600;
+  color: #2e7d32;
+  margin-bottom: 32px;
+}
+
+.ant-form-item-label > label {
+  color: #444;
+  font-weight: 500;
+}
+
+.ant-input-affix-wrapper,
+.ant-input-password {
+  border-radius: 6px;
+  transition: border 0.3s, box-shadow 0.3s;
+}
+
+.ant-input-affix-wrapper-focused {
+  border-color: #66bb6a !important;
+  box-shadow: 0 0 0 2px rgba(102, 187, 106, 0.2);
+}
+
+.ant-btn-primary {
+  background-color: #2e7d32;
+  border-color: #2e7d32;
+  height: 45px;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.ant-btn-primary:hover {
+  background-color: #388e3c !important;
+  border-color: #388e3c !important;
+  transform: translateY(-1px);
+}
+
+.login-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+.login-links a {
+  color: #2e7d32;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.login-links a:hover {
+  text-decoration: underline;
+  color: #1b5e20;
+}
+
+.link-separator {
+  margin: 0 8px;
+  color: #999;
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 32px 20px;
+  }
+
+  .login-card h1 {
+    font-size: 24px;
+  }
+}

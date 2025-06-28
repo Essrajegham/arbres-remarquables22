@@ -1,0 +1,116 @@
+/* Section Hero (slide 1) */
+/* Reset des médias queries problématiques */
+@media (min-width: 768px) {
+  .hero-section, .features-section {
+    display: block !important;
+  }
+}
+
+/* Force l'affichage sur tous les écrans */
+.hero-section {
+  display: flex !important;
+  min-height: 100vh;
+}
+
+.features-section {
+  display: block !important;
+  width: 100%;
+}
+
+
+
+.hero-section {
+  position: relative;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 1rem;
+}
+
+.hero-content-box {
+  background-color: rgba(255, 255, 255, 0.85);
+  padding: 40px 30px;
+  border-radius: 12px;
+  max-width: 700px;
+  width: 90%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.hero-content-box h1,
+.hero-content-box h2 {
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.hero-content-box p {
+  margin-top: 0;
+  line-height: 1.5;
+  color: #444;
+}
+
+/* Section fonctionnalités (slide 2 carrousel) */
+.features-section {
+  padding: 4rem 1rem 6rem;
+  background: #f9f9f9;
+}
+
+/* Swiper container */
+.feature-swiper {
+  padding-bottom: 48px;
+  width: 100%;
+}
+
+/* Carte */
+.feature-slide {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  user-select: none;
+}
+
+/* Zoom carte active */
+.swiper-slide-active .feature-slide {
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  z-index: 5;
+}
+
+/* Image carte */
+.feature-image {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 12px 12px 0 0;
+}
+
+/* Contenu texte carte */
+.feature-content {
+  padding: 18px 16px;
+  text-align: center;
+  color: #333;
+}
+
+/* Pagination Swiper */
+.swiper-pagination-bullet {
+  background: #52c41a !important;
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}
+
+.swiper-pagination-bullet-active {
+  opacity: 1 !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .feature-image {
+    height: 140px;
+  }
+}

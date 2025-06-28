@@ -1,0 +1,68 @@
+.admin-dashboard {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dashboard-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-card .ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.dashboard-card .ant-card-head-title {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.add-btn {
+  background-color: #2e7d32;
+  border-color: #2e7d32;
+  color: white;
+}
+
+.add-btn:hover {
+  background-color: #388e3c !important;
+  border-color: #388e3c !important;
+  color: white !important;
+}
+
+.logout-btn {
+  background-color: #f5222d;
+  border-color: #f5222d;
+  color: white;
+}
+
+.logout-btn:hover {
+  background-color: #ff4d4f !important;
+  border-color: #ff4d4f !important;
+  color: white !important;
+}
+
+.ant-table-thead > tr > th {
+  background-color: #fafafa;
+  font-weight: 500;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background-color: #f6ffed !important;
+}
+
+@media (max-width: 768px) {
+  .admin-dashboard {
+    padding: 12px;
+  }
+  
+  .dashboard-card .ant-card-extra {
+    margin-top: 12px;
+    width: 100%;
+  }
+  
+  .add-btn {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+}

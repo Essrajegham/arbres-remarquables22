@@ -1,0 +1,27 @@
+.user-dashboard {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.dashboard-title {
+  color: var(--primary-color);
+  margin-bottom: 0;
+}
+
+.user-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.logout-btn {
+  margin-top: 1rem;
+  background-color: #f5222d;
+  color: white;
+  border: none;
+}
+
+.logout-btn:hover {
+  background-color: #ff4d4f !important;
+  color: white !important;
+}
