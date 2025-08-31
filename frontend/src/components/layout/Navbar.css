@@ -195,7 +195,28 @@
   margin-bottom: 6px;
 }
 
-/* Responsive */
+/* Responsive - Tablette (992px) */
+@media (max-width: 992px) {
+  .navbar-container {
+    padding: 15px 40px;
+  }
+  
+  .navbar-links {
+    gap: 25px;
+  }
+  
+  .navbar-link {
+    font-size: 16px;
+    padding: 8px 12px;
+  }
+  
+  .navbar-auth {
+    gap: 20px;
+    min-width: 150px;
+  }
+}
+
+/* Responsive - Mobile (768px) */
 @media (max-width: 768px) {
   .desktop-menu {
     display: none !important;
@@ -211,6 +232,43 @@
 
   .navbar-logo-text {
     font-size: 22px;
+  }
+  
+  .mobile-menu-item {
+    font-size: 17px;
+    padding: 10px 15px;
+    max-width: 250px;
+  }
+}
+
+/* Responsive - Petits mobiles (480px) */
+@media (max-width: 480px) {
+  .navbar-container {
+    padding: 10px 15px;
+  }
+  
+  .navbar-logo-text {
+    font-size: 20px;
+  }
+  
+  .mobile-menu-icon {
+    font-size: 24px;
+  }
+  
+  .mobile-menu {
+    padding: 15px;
+    gap: 15px;
+  }
+  
+  .mobile-menu-item {
+    font-size: 16px;
+    padding: 8px 12px;
+    max-width: 220px;
+  }
+  
+  .mobile-submenu-title {
+    font-size: 14px;
+    max-width: 200px;
   }
 }
 

@@ -1,0 +1,59 @@
+/* Couleur du bouton de copie ID */
+.custom-copy-icon .ant-typography-copy {
+  color: #237804 !important;
+  cursor: pointer;
+}
+
+/* Personnalisation du champ de recherche */
+.custom-search .ant-input-affix-wrapper {
+  border-color: #237804 !important;
+}
+
+.custom-search .ant-input-affix-wrapper:focus,
+.custom-search .ant-input-affix-wrapper:hover {
+  border-color: #1b4d01 !important;
+  box-shadow: 0 0 0 2px rgba(35, 120, 4, 0.3) !important;
+}
+
+.custom-search .ant-btn-primary {
+  background-color: #237804 !important;
+  border-color: #237804 !important;
+  color: #fff !important;
+}
+
+.custom-search .ant-btn-primary:hover,
+.custom-search .ant-btn-primary:focus {
+  background-color: #1b4d01 !important;
+  border-color: #1b4d01 !important;
+}
+
+/* Responsive: gestion débordement tableau sur petits écrans */
+/* Style responsive pour mobile */
+@media (max-width: 576px) {
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    padding: 8px !important;
+  }
+  
+  .ant-card-head {
+    padding: 0 8px !important;
+  }
+  
+  .ant-card-body {
+    padding: 8px !important;
+  }
+  
+  .ant-table {
+    font-size: 13px;
+  }
+  
+  .ant-tag {
+    font-size: 12px;
+  }
+  
+  .ant-btn-sm {
+    min-width: 24px;
+    height: 24px;
+  }
+}
+

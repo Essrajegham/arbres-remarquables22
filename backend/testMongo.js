@@ -1,10 +1,15 @@
-const path = require('path');
-const dotenv = require('dotenv');
+require('dotenv').config();
+const mongoose = require('mongoose');
 
-dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+async function test() {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log('Connexion MongoDB réussie');
+    process.exit(0);
+  } catch (err) {
+    console.error('Erreur connexion MongoDB:', err);
+    process.exit(1);
+  }
+}
 
-console.log('Chemin .env:', path.resolve(__dirname, '..', '.env'));
-console.log('EMAIL_USER =', process.env.EMAIL_USER);
-console.log('EMAIL_PASS =', process.env.EMAIL_PASS);
-console.log('MONGO_URI =', process.env.MONGO_URI);
-console.log('JWT_SECRET =', process.env.JWT_SECRET);
+test();

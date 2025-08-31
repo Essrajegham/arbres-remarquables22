@@ -1,30 +1,46 @@
+// controllers/authController.js
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const path = require('path');
+require('dotenv').config();
 
+// Configuration de Nodemailer
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    pass: process.env.EMAIL_PASS
   }
 });
 
+// Enregistrement utilisateur
 exports.register = async (req, res) => {
   try {
     const { username, password, fullName, email, profession } = req.body;
+    
+    // Validation
     if (!username || !password || !fullName || !email || !profession) {
-      return res.status(400).json({ error: 'Tous les champs sont requis' });
+      return res.status(400).json({ 
+        success: false,
+        error: 'Tous les champs sont requis' 
+      });
     }
 
+    // Vérification doublon
     const existingUser = await User.findOne({ $or: [{ username }, { email }] });
-    if (existingUser) return res.status(400).json({ error: 'Nom ou email déjà utilisé' });
+    if (existingUser) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Nom d\'utilisateur ou email déjà utilisé' 
+      });
+    }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash du mot de passe
+    const hashedPassword = await bcrypt.hash(password, 12);
 
+    // Création utilisateur
     const user = new User({
       username,
       password: hashedPassword,
@@ -32,186 +48,228 @@ exports.register = async (req, res) => {
       email,
       profession,
       role: 'user',
-      avatar: req.file ? req.file.path : null
+      avatar: req.file?.path
     });
 
     await user.save();
 
-    res.status(201).json({ message: 'Utilisateur créé avec succès' });
+    // Réponse sans le mot de passe
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.status(201).json({ 
+      success: true,
+      message: 'Utilisateur créé avec succès',
+      user: userResponse
+    });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Register error:', err);
+    
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ 
+        success: false,
+        error: err.message 
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur lors de l\'inscription' 
+    });
   }
 };
 
+// Connexion utilisateur
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Champs manquants' });
+    
+    if (!username || !password) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Nom d\'utilisateur et mot de passe requis' 
+      });
+    }
 
-    const user = await User.findOne({ $or: [{ username }, { email: username }] });
-    if (!user) return res.status(401).json({ error: 'Identifiants invalides' });
+    // Recherche par username ou email
+    const user = await User.findOne({ $or: [{ username }, { email: username }] })
+                          .select('+password');
+    
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'Identifiants incorrects' 
+      });
+    }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ error: 'Identifiants invalides' });
-
-    if (!process.env.JWT_SECRET) return res.status(500).json({ error: 'JWT_SECRET manquant' });
-
+    // Génération du token JWT
     const token = jwt.sign(
-      { id: user._id, role: user.role, username: user.username, avatar: user.avatar },
+      { 
+        id: user._id, 
+        role: user.role, 
+        username: user.username 
+      },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
+    // Réponse sans le mot de passe
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
     res.json({
+      success: true,
       token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        fullName: user.fullName,
-        avatar: user.avatar
-      }
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-exports.createAdmin = async (req, res) => {
-  if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Accès interdit' });
-
-  try {
-    const { username, password, fullName, email, profession } = req.body;
-    if (!username || !password || !fullName || !email || !profession)
-      return res.status(400).json({ error: 'Tous les champs sont requis' });
-
-    const existingUser = await User.findOne({ username });
-    if (existingUser) return res.status(400).json({ error: 'Nom déjà utilisé' });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const admin = new User({
-      username,
-      password: hashedPassword,
-      fullName,
-      email,
-      profession,
-      role: 'admin',
-      avatar: req.file ? req.file.path : null
+      user: userResponse
     });
 
-    await admin.save();
-
-    res.status(201).json({ message: 'Admin créé avec succès' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Login error:', err);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur lors de la connexion' 
+    });
   }
 };
 
-exports.createUser = async (req, res) => {
-  if (!['admin', 'superadmin'].includes(req.user.role))
-    return res.status(403).json({ error: 'Accès interdit' });
-
+// Récupération des infos de l'utilisateur connecté
+exports.getMe = async (req, res) => {
   try {
-    const { username, password, fullName, email, profession } = req.body;
-    if (!username || !password || !fullName || !email || !profession)
-      return res.status(400).json({ error: 'Tous les champs sont requis' });
+    const user = await User.findById(req.user.id).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Utilisateur non trouvé' 
+      });
+    }
 
-    const existingUser = await User.findOne({ username });
-    if (existingUser) return res.status(400).json({ error: 'Nom déjà utilisé' });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = new User({
-      username,
-      password: hashedPassword,
-      fullName,
-      email,
-      profession,
-      role: 'user',
-      avatar: req.file ? req.file.path : null
+    res.json({ 
+      success: true,
+      user 
     });
 
-    await user.save();
-
-    res.status(201).json({ message: 'Utilisateur créé avec succès' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('GetMe error:', err);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur' 
+    });
   }
 };
 
-exports.listUsers = async (req, res) => {
-  if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Accès refusé' });
-
-  try {
-    const users = await User.find({}, '-password -resetPasswordCode -resetPasswordExpires');
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-exports.resetSuperadmin = async (req, res) => {
-  try {
-    const hashedPassword = await bcrypt.hash('superadmin123', 10);
-    await User.findOneAndUpdate({ username: 'superadmin' }, { password: hashedPassword });
-    res.json({ message: 'Mot de passe superadmin réinitialisé' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
+// Réinitialisation mot de passe
 exports.requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
+    
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: 'Email non trouvé' });
+    if (!user) {
+      // Sécurité : ne pas révéler si l'email existe
+      return res.json({ 
+        success: true,
+        message: 'Si un compte existe avec cet email, un lien a été envoyé' 
+      });
+    }
 
-    const resetCode = crypto.randomInt(100000, 999999).toString();
-    user.resetPasswordCode = resetCode;
-    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 min
+    // Génération du token de réinitialisation
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    user.resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+    
     await user.save();
 
+    // Envoi de l'email
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"Sousse GreenMap" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'Réinitialisation mot de passe - Sousse GreenMap',
-      html: `<div style="font-family: Arial; max-width: 600px;">
-               <h2 style="color: #2e7d32;">Réinitialisation mot de passe</h2>
-               <p>Code : <strong>${resetCode}</strong></p>
-               <p>Valable 15 minutes.</p>
-             </div>`
+      subject: 'Réinitialisation de votre mot de passe',
+      html: `
+        <div style="font-family: Arial; max-width: 600px;">
+          <h2 style="color: #2e7d32;">Réinitialisation de mot de passe</h2>
+          <p>Cliquez sur le lien suivant pour réinitialiser votre mot de passe :</p>
+          <a href="${resetUrl}" style="background-color: #2e7d32; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            Réinitialiser le mot de passe
+          </a>
+          <p>Ce lien expirera dans 15 minutes.</p>
+        </div>`
     };
 
     await transporter.sendMail(mailOptions);
 
-    res.json({ message: 'Code de réinitialisation envoyé par email' });
+    res.json({ 
+      success: true,
+      message: 'Email de réinitialisation envoyé' 
+    });
+
   } catch (err) {
-    res.status(500).json({ error: 'Erreur envoi email' });
+    console.error('RequestPasswordReset error:', err);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de l\'envoi de l\'email' 
+    });
   }
 };
 
 exports.resetPassword = async (req, res) => {
   try {
-    const { email, code, newPassword } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: 'Email non trouvé' });
+    const { token, newPassword } = req.body;
+    
+    if (!token || !newPassword) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Token et nouveau mot de passe requis' 
+      });
+    }
 
-    if (user.resetPasswordCode !== code || user.resetPasswordExpires < Date.now())
-      return res.status(400).json({ error: 'Code invalide ou expiré' });
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
 
-    user.password = await bcrypt.hash(newPassword, 10);
-    user.resetPasswordCode = undefined;
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Token invalide ou expiré' 
+      });
+    }
+
+    // Mise à jour du mot de passe
+    user.password = await bcrypt.hash(newPassword, 12);
+    user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
+    
     await user.save();
 
-    res.json({ message: 'Mot de passe réinitialisé avec succès' });
+    res.json({ 
+      success: true,
+      message: 'Mot de passe réinitialisé avec succès' 
+    });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('ResetPassword error:', err);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la réinitialisation' 
+    });
   }
 };
 
+// Déconnexion
 exports.logout = (req, res) => {
-  res.json({ message: 'Déconnecté' });
+  res.json({ 
+    success: true,
+    message: 'Déconnexion réussie' 
+  });
 };

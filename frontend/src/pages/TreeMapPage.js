@@ -1,168 +1,456 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   message,
-  Input,
-  Button,
-  Form,
-  Row,
-  Col,
-  Spin,
-  Alert,
-  Descriptions,
   Card,
   Collapse,
   Rate,
+  Descriptions,
+  Form,
+  Button,
+  Spin,
+  Alert,
+  Layout,
+  Row,
+  Col,
+  Typography,
+  Space,
+  List,
+  Avatar,
+  Divider,
+  Input,
+  Tabs
 } from 'antd';
+import {
+  EnvironmentOutlined,
+  InfoCircleOutlined,
+  UnorderedListOutlined,
+  ClusterOutlined,
+  MessageOutlined,
+  StarOutlined,
+  UserOutlined
+} from '@ant-design/icons';
 import axios from 'axios';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './TreeMapPage.css';
 
-const treeGreenIcon = new L.Icon({
-  iconUrl: '/tree-icon.png',
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-  popupAnchor: [0, -40],
+// Configuration des constantes
+const API_CONFIG = {
+  baseURL: 'http://localhost:5000/api',
+  endpoints: {
+    trees: '/trees',
+    comments: '/avis'
+  }
+};
+
+const RATING_QUESTIONS = [
+  { 
+    key: 'question1', 
+    label: "1. Qualité de l'air autour de cet arbre",
+    apiKey: 'airQuality'
+  },
+  { 
+    key: 'question2', 
+    label: "2. Propreté des environs immédiats",
+    apiKey: 'cleanliness'
+  },
+  { 
+    key: 'question3', 
+    label: "3. Niveau de bruit ambiant",
+    apiKey: 'noiseLevel'
+  },
+  { 
+    key: 'question4', 
+    label: "4. Facilité d'accès à cet arbre",
+    apiKey: 'accessibility'
+  },
+  { 
+    key: 'question5', 
+    label: "5. État général de l'arbre",
+    apiKey: 'treeCondition'
+  },
+  {
+  key: 'question6',
+  label: "6. Santé de l'arbre",
+  apiKey: 'treeHealth'
+}
+
+];
+
+// Configuration des icônes Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png')
 });
 
-const FlyToLocation = ({ position }) => {
+// Couleurs thématiques vertes
+const COLORS = {
+  primary: '#2E7D32',         // Vert foncé
+  primaryLight: '#4CAF50',     // Vert moyen
+  primaryLighter: '#81C784',   // Vert clair
+  secondary: '#8BC34A',        // Vert secondaire
+  accent: '#CDDC39',           // Vert-jaune accent
+  textDark: '#263238',         // Texte foncé
+  textMedium: '#455A64',       // Texte moyen
+  textLight: '#ECEFF1',        // Texte clair
+  background: '#F5F5F5',       // Arrière-plan
+  cardBackground: '#FFFFFF',   // Fond des cartes
+  divider: '#BDBDBD',          // Couleur des séparateurs
+  rating: '#FFA000',           // Couleur des évaluations
+  comment: '#5E35B1',          // Couleur des commentaires
+  mapIcon: '#1B5E20'          // Couleur des icônes de carte
+};
+
+const { Text, Title } = Typography;
+const { Content, Footer } = Layout;
+const { Panel } = Collapse;
+const { TabPane } = Tabs;
+
+const treeGreenIcon = new L.Icon({
+  iconUrl: '/tree-icon.png',
+  iconSize: [25, 25],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+  className: 'tree-marker-icon'
+});
+
+const FlyToLocation = React.memo(({ position }) => {
   const map = useMap();
+
   useEffect(() => {
-    if (position) {
-      map.setView(position, map.getZoom());
+    if (position && map.getCenter().distanceTo(position) > 100) {
+      map.flyTo(position, map.getZoom(), {
+        duration: 1
+      });
     }
   }, [position, map]);
+
   return null;
+});
+
+const MapTypeSelector = ({ mapType, onChange }) => {
+  return (
+    <div className="map-type-selector">
+      <Button 
+        type={mapType === 'street' ? 'primary' : 'default'} 
+        onClick={() => onChange('street')}
+        className="map-type-btn"
+        style={{ 
+          marginRight: 8,
+          backgroundColor: mapType === 'street' ? COLORS.primary : '#fff',
+          borderColor: mapType === 'street' ? COLORS.primary : COLORS.divider
+        }}
+      >
+        OpenStreetMap
+      </Button>
+      <Button 
+        type={mapType === 'satellite' ? 'primary' : 'default'} 
+        onClick={() => onChange('satellite')}
+        className="map-type-btn"
+        style={{ 
+          backgroundColor: mapType === 'satellite' ? COLORS.primary : '#fff',
+          borderColor: mapType === 'satellite' ? COLORS.primary : COLORS.divider
+        }}
+      >
+        Satellite
+      </Button>
+    </div>
+  );
+};
+
+const RatingSummary = ({ comments = [] }) => {
+  const calculateAverageRatings = (comments) => {
+    const initialAverages = {
+      airQuality: 0,
+      cleanliness: 0,
+      noiseLevel: 0,
+      accessibility: 0,
+      treeCondition: 0,
+      treeHealth: 0,
+      count: 0
+    };
+
+    if (!Array.isArray(comments)) return initialAverages;
+
+    const sums = comments.reduce((acc, comment) => {
+      if (comment?.ratings) {
+        acc.airQuality += comment.ratings.airQuality || 0;
+        acc.cleanliness += comment.ratings.cleanliness || 0;
+        acc.noiseLevel += comment.ratings.noiseLevel || 0;
+        acc.accessibility += comment.ratings.accessibility || 0;
+        acc.treeCondition += comment.ratings.treeCondition || 0;
+        acc.treeHealth += comment.ratings.treeHealth || 0;
+        acc.count += 1;
+      }
+      return acc;
+    }, {...initialAverages});
+
+    return {
+      airQuality: sums.count > 0 ? sums.airQuality / sums.count : 0,
+      cleanliness: sums.count > 0 ? sums.cleanliness / sums.count : 0,
+      noiseLevel: sums.count > 0 ? sums.noiseLevel / sums.count : 0,
+      accessibility: sums.count > 0 ? sums.accessibility / sums.count : 0,
+      treeCondition: sums.count > 0 ? sums.treeCondition / sums.count : 0,
+      treeHealth: sums.count > 0 ? sums.treeHealth / sums.count : 0,
+      count: sums.count
+    };
+  };
+
+  const averages = calculateAverageRatings(comments);
+  
+  const ratingItems = [
+    { label: "Qualité de l'air", value: averages.airQuality, key: 'airQuality' },
+    { label: "Propreté des environs", value: averages.cleanliness, key: 'cleanliness' },
+    { label: "Niveau de bruit", value: averages.noiseLevel, key: 'noiseLevel' },
+    { label: "Accessibilité", value: averages.accessibility, key: 'accessibility' },
+    { label: "État de l'arbre", value: averages.treeCondition, key: 'treeCondition' },
+    { label: "Santé de l'arbre", value: averages.treeHealth, key: 'treeHealth' },
+
+  ];
+
+  return (
+    <div className="ratings-summary">
+      <Divider orientation="left" style={{ color: COLORS.textMedium }}>Avis des utilisateurs ({averages.count})</Divider>
+      
+      {ratingItems.map(item => (
+        <div key={item.key} className="rating-item">
+          <div className="rating-label">{item.label}</div>
+          <div className="rating-bar-container">
+            <div 
+              className="rating-bar" 
+              style={{ width: `${(item.value / 5) * 100}%` }}
+            />
+          </div>
+          <div className="rating-value">
+            {item.value.toFixed(1)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 };
 
 const TreeMapPage = () => {
   const [trees, setTrees] = useState([]);
   const [selectedTree, setSelectedTree] = useState(null);
-  const [searchedTree, setSearchedTree] = useState(null);
   const [mapCenter, setMapCenter] = useState([35.8254, 10.6369]);
-  const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({
-    species: '',
-    district: '',
-    minAge: '',
-  });
   const [ratings, setRatings] = useState({
-    question1: 0,
-    question2: 0,
-    question3: 0,
-    question4: 0,
-    question5: 0,
+    question1: 1,
+    question2: 1,
+    question3: 1,
+    question4: 1,
+    question5: 1,
+    question6: 1,
   });
+  const [comments, setComments] = useState([]);
+  const [form] = Form.useForm();
+  const [commentForm] = Form.useForm();
   const mapRef = useRef();
+  const [activeTab, setActiveTab] = useState('comments');
+  const [submitting, setSubmitting] = useState(false);
+  const [mapType, setMapType] = useState('street');
+  const [currentUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user')) || {};
+    } catch {
+      return {};
+    }
+  });
 
-  useEffect(() => {
-    const fetchTrees = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:5000/api/trees', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+  const getAuthHeader = useCallback(() => ({
+    headers: { 
+      Authorization: `Bearer ${localStorage.getItem('token')}`,
+      'Content-Type': 'application/json'
+    }
+  }), []);
 
-        let treesData = Array.isArray(res.data)
-          ? res.data
-          : res.data?.trees && Array.isArray(res.data.trees)
-          ? res.data.trees
-          : [];
+  const fetchTrees = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await axios.get(
+        `${API_CONFIG.baseURL}${API_CONFIG.endpoints.trees}`,
+        getAuthHeader()
+      );
 
-        const validTrees = treesData
+      const processTreeData = (data) => {
+        if (!data) return [];
+        
+        let treesData = [];
+        if (Array.isArray(data)) {
+          treesData = data;
+        } else if (data?.trees && Array.isArray(data.trees)) {
+          treesData = data.trees;
+        } else if (data?.data && Array.isArray(data.data)) {
+          treesData = data.data;
+        }
+
+        return treesData
           .filter(tree => tree?.location?.coordinates?.length === 2)
           .map((tree, index) => ({
             ...tree,
-            id: tree._id || `tree-${index}-${Date.now()}`,
-            latLng: [tree.location.coordinates[1], tree.location.coordinates[0]],
+            id: tree.id || `tree-${index}-${Date.now()}`,
+            latLng: [tree.location.coordinates[1], tree.location.coordinates[0]]
           }));
+      };
 
-        setTrees(validTrees);
-      } catch (err) {
-        console.error('Erreur fetchTrees:', err);
-        setError('Erreur lors du chargement des arbres');
-        message.error('Impossible de charger les données des arbres');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTrees();
-  }, []);
-
-  const getFilteredTrees = () => {
-    return trees.filter(tree => {
-      const matchSpecies =
-        !filters.species ||
-        (tree.species &&
-          tree.species.toLowerCase().includes(filters.species.toLowerCase()));
-      const matchDistrict =
-        !filters.district ||
-        (tree.district &&
-          tree.district.toLowerCase().includes(filters.district.toLowerCase()));
-      const matchMinAge =
-        !filters.minAge || (tree.age && tree.age >= parseInt(filters.minAge));
-      return matchSpecies && matchDistrict && matchMinAge;
-    });
-  };
-
-  const handleSearch = values => {
-    const lat = parseFloat(values.latitude);
-    const lng = parseFloat(values.longitude);
-    if (isNaN(lat) || isNaN(lng)) {
-      message.error('Coordonnées invalides');
-      return;
+      const processedTrees = processTreeData(res.data);
+      setTrees(processedTrees);
+    } catch (err) {
+      console.error('Erreur fetchTrees:', err);
+      setError(err.response?.data?.message || 'Erreur lors du chargement des arbres');
+      message.error('Impossible de charger les données des arbres');
+    } finally {
+      setLoading(false);
     }
+  }, [getAuthHeader]);
 
-    const foundTree = trees.find(tree => {
-      const [treeLat, treeLng] = tree.latLng;
-      return Math.abs(treeLat - lat) < 0.001 && Math.abs(treeLng - lng) < 0.001;
-    });
+  const fetchComments = useCallback(async (treeId) => {
+    if (!treeId) return;
+    
+    try {
+      setCommentsLoading(true);
+      const res = await axios.get(
+        `${API_CONFIG.baseURL}${API_CONFIG.endpoints.comments}/${treeId}`,
+        getAuthHeader()
+      );
+      
+      const commentsData = res.data?.data || [];
+      const validComments = Array.isArray(commentsData) ? commentsData : [];
+      setComments(validComments);
+    } catch (err) {
+      console.error('Erreur lors du chargement des commentaires:', err);
+      message.error(err.response?.data?.error || 'Impossible de charger les commentaires');
+      setComments([]);
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [getAuthHeader]);
 
-    setSelectedTree(foundTree || null); // sélectionne l'arbre trouvé ou null
-    setSearchedTree({ latLng: [lat, lng] }); // stocke toujours la coordonnée saisie
-    setMapCenter([lat, lng]);
-  };
+  useEffect(() => {
+    fetchTrees();
+  }, [fetchTrees]);
+
+  useEffect(() => {
+    if (selectedTree?.id) {
+      fetchComments(selectedTree.id);
+    }
+  }, [selectedTree, fetchComments]);
 
   const handleRatingChange = (questionKey, value) => {
     setRatings(prev => ({ ...prev, [questionKey]: value }));
   };
 
-  const handleSubmitRatings = async () => {
+  const handleSubmitRating = async () => {
+    if (!selectedTree?.id) {
+      message.error("Aucun arbre sélectionné");
+      return;
+    }
+
     try {
-      if (Object.values(ratings).some(v => v === 0)) {
-        message.error('Merci de répondre à toutes les questions');
-        return;
-      }
+      setSubmitting(true);
 
-      const token = localStorage.getItem('token');
-      await axios.post(
-        'http://localhost:5000/api/avis',
+      const ratingsPayload = RATING_QUESTIONS.reduce((acc, question) => {
+        acc[question.apiKey] = Math.max(1, ratings[question.key]);
+        return acc;
+      }, {});
+
+      const response = await axios.post(
+        `${API_CONFIG.baseURL}${API_CONFIG.endpoints.comments}`,
         {
-          treeId: selectedTree._id,
-
-          ratings,
+          tree: selectedTree.id,
+          ratings: ratingsPayload
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        getAuthHeader()
       );
 
-      message.success('Merci pour votre avis !');
-
-      setRatings({
-        question1: 0,
-        question2: 0,
-        question3: 0,
-        question4: 0,
-        question5: 0,
-      });
+      if (response.data?.success) {
+        message.success('Évaluation enregistrée avec succès !');
+        fetchComments(selectedTree.id);
+      }
     } catch (error) {
-      console.error(error);
-      message.error("Erreur lors de l'envoi de l'avis");
+      console.error('Erreur:', error);
+      message.error(
+        error.response?.data?.error || 
+        error.message || 
+        "Erreur lors de l'envoi de l'évaluation"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSubmitComment = async (values) => {
+    if (!values.comment?.trim()) {
+      message.error('Le commentaire ne peut pas être vide');
+      return;
+    }
+
+    if (!selectedTree?.id) {
+      message.error("Aucun arbre sélectionné");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const payload = {
+        tree: selectedTree.id,
+        comment: values.comment.trim(),
+      };
+
+      const response = await axios.post(
+        `${API_CONFIG.baseURL}${API_CONFIG.endpoints.comments}`,
+        payload,
+        getAuthHeader()
+      );
+
+      if (response.data?.success) {
+        message.success('Commentaire publié avec succès !');
+        commentForm.resetFields();
+        fetchComments(selectedTree.id);
+      }
+    } catch (error) {
+      console.error('Erreur:', error.response?.data || error.message);
+      if (error.response?.data?.error?.includes('ratings')) {
+        try {
+          const retryPayload = {
+            tree: selectedTree.id,
+            comment: values.comment.trim(),
+            ratings: {
+              airQuality: 1,
+              cleanliness: 1,
+              noiseLevel: 1,
+              accessibility: 1,
+              treeCondition: 1
+            }
+          };
+          
+          const retryResponse = await axios.post(
+            `${API_CONFIG.baseURL}${API_CONFIG.endpoints.comments}`,
+            retryPayload,
+            getAuthHeader()
+          );
+          
+          if (retryResponse.data?.success) {
+            message.success('Commentaire publié avec succès !');
+            commentForm.resetFields();
+            fetchComments(selectedTree.id);
+          }
+        } catch (retryError) {
+          message.error(retryError.response?.data?.error || "Erreur lors de la publication");
+        }
+      } else {
+        message.error(error.response?.data?.error || "Erreur lors de la publication du commentaire");
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -180,8 +468,8 @@ const TreeMapPage = () => {
         <Alert message="Erreur" description={error} type="error" showIcon />
         <Button
           type="primary"
-          onClick={() => window.location.reload()}
-          style={{ marginTop: '20px' }}
+          onClick={fetchTrees}
+          style={{ marginTop: '20px', backgroundColor: COLORS.primary }}
         >
           Réessayer
         </Button>
@@ -189,234 +477,438 @@ const TreeMapPage = () => {
     );
   }
 
-  const filteredTrees = getFilteredTrees();
-
-  // Items pour Collapse de la liste des arbres
-  const collapseItems = filteredTrees.map(tree => ({
-    key: tree._id || tree.id,
-    label: tree.name || 'Arbre sans nom',
-    children: (
-      <>
-        <p>
-          <strong>Espèce :</strong> {tree.species || 'Non spécifiée'}
-        </p>
-        <p>
-          <strong>Adresse :</strong> {tree.address || 'Non spécifiée'}
-        </p>
-        <p>
-          <strong>Coordonnées :</strong> {tree.latLng[0].toFixed(6)},{' '}
-          {tree.latLng[1].toFixed(6)}
-        </p>
-      </>
-    ),
-  }));
-
   return (
-    <div className="tree-map-page">
-      <div className="search-header">
-        <Form form={form} onFinish={handleSearch} layout="inline">
-          <Row gutter={16} style={{ width: '100%' }}>
-            <Col span={6}>
-              <Form.Item name="latitude" label="Latitude" rules={[{ required: true }]}>
-                <Input placeholder="35.8254" type="number" step="0.000001" />
-              </Form.Item>
-            </Col>
-            <Col span={6}>
-              <Form.Item name="longitude" label="Longitude" rules={[{ required: true }]}>
-                <Input placeholder="10.6369" type="number" step="0.000001" />
-              </Form.Item>
-            </Col>
-            <Col span={6}>
-              <Button type="primary" htmlType="submit" block>
-                Aller à ces coordonnées
-              </Button>
-            </Col>
-            <Col span={6}>
-              <Button
-                type="default"
-                block
-                onClick={() => {
-                  form.resetFields();
-                  setSearchedTree(null);
-                  setSelectedTree(null);
-                  setMapCenter([35.8254, 10.6369]);
-                  message.info('Recherche réinitialisée');
+    <Layout className="tree-map-layout" style={{ background: COLORS.background }}>
+      <Content style={{ padding: '24px' }}>
+        <Row gutter={[24, 24]} style={{ minHeight: 'calc(100vh - 274px)' }}>
+          <Col xs={24} md={16}>
+            <Card
+              title={
+                <Space>
+                  <EnvironmentOutlined style={{ color: COLORS.primary }} />
+                  <Title level={4} style={{ margin: 0, color: COLORS.primary }}>Carte des arbres</Title>
+                </Space>
+              }
+              bordered={false}
+              className="map-card"
+              headStyle={{ 
+                borderBottom: `2px solid ${COLORS.primaryLight}`,
+                background: COLORS.cardBackground
+              }}
+              bodyStyle={{ padding: 0, position: 'relative' }}
+            >
+              <div className="map-container">
+                <MapTypeSelector mapType={mapType} onChange={setMapType} />
+                <MapContainer
+                  center={mapCenter}
+                  zoom={13}
+                  className="leaflet-container"
+                  ref={mapRef}
+                  minZoom={12}
+                  maxBounds={[
+                    [35.5, 10.3],
+                    [36.0, 11.0],
+                  ]}
+                  whenCreated={(map) => {
+                    mapRef.current = map;
+                  }}
+                >
+                  {mapType === 'street' ? (
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    />
+                  ) : (
+                    <TileLayer
+                      url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                      attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                    />
+                  )}
+                  <FlyToLocation position={mapCenter} />
+                  {Array.isArray(trees) && trees.map(tree => (
+                    <Marker
+                      key={tree.id}
+                      position={tree.latLng}
+                      icon={treeGreenIcon}
+                      eventHandlers={{
+                        click: () => {
+                          setSelectedTree(tree);
+                          setMapCenter(tree.latLng);
+                        },
+                      }}
+                    >
+                      <Popup className="tree-popup">
+                        <Space direction="vertical">
+                          <Text strong style={{ fontSize: '16px', color: COLORS.textDark }}>
+                            {tree.name || 'Arbre sans nom'}
+                          </Text>
+                          <Text type="secondary" style={{ color: COLORS.textMedium }}>
+                            {tree.species || 'Non spécifiée'}
+                          </Text>
+                          <Button 
+                            type="link" 
+                            size="small" 
+                            icon={<InfoCircleOutlined />}
+                            onClick={() => {
+                              setSelectedTree(tree);
+                              setMapCenter(tree.latLng);
+                            }}
+                            style={{ color: COLORS.primary }}
+                          >
+                            Plus de détails
+                          </Button>
+                        </Space>
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
+              </div>
+            </Card>
+          </Col>
+
+          <Col xs={24} md={8}>
+            <Space direction="vertical" size="middle" className="right-column" style={{ width: '100%' }}>
+              <Card
+                title={
+                  <Space>
+                    <InfoCircleOutlined style={{ color: COLORS.primary }} />
+                    <Title level={4} style={{ margin: 0, color: COLORS.primary }}>Détails de l'arbre</Title>
+                  </Space>
+                }
+                bordered={false}
+                className="details-card"
+                headStyle={{ 
+                  borderBottom: `2px solid ${COLORS.primaryLight}`,
+                  background: COLORS.cardBackground
                 }}
               >
-                Réinitialiser la recherche
-              </Button>
-            </Col>
-          </Row>
-        </Form>
-      </div>
-
-      <div className="map-details-wrapper">
-        <div className="filters-panel">
-          <Card title="Filtres avancés" variant="outlined">
-            <Form layout="vertical">
-              <Form.Item label="Espèce">
-                <Input
-                  placeholder="ex: palmier"
-                  value={filters.species}
-                  onChange={e => setFilters(prev => ({ ...prev, species: e.target.value }))}
-                  allowClear
-                />
-              </Form.Item>
-              <Form.Item label="Quartier / Délégation">
-                <Input
-                  placeholder="ex: Sahloul"
-                  value={filters.district}
-                  onChange={e => setFilters(prev => ({ ...prev, district: e.target.value }))}
-                  allowClear
-                />
-              </Form.Item>
-              <Form.Item label="Âge minimum (ans)">
-                <Input
-                  type="number"
-                  min={0}
-                  value={filters.minAge}
-                  onChange={e => setFilters(prev => ({ ...prev, minAge: e.target.value }))}
-                />
-              </Form.Item>
-              <Button onClick={() => setFilters({ species: '', district: '', minAge: '' })}>
-                Réinitialiser les filtres
-              </Button>
-            </Form>
-          </Card>
-        </div>
-
-        <div className="map-section" style={{ height: '600px' }}>
-          <MapContainer
-            center={mapCenter}
-            zoom={13}
-            style={{ height: '100%', width: '100%' }}
-            ref={mapRef}
-            minZoom={12}
-            maxBounds={[
-              [35.5, 10.3],
-              [36.0, 11.0],
-            ]}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="&copy; OpenStreetMap contributors"
-            />
-            <FlyToLocation position={mapCenter} />
-
-            {/* Markers des arbres filtrés */}
-            {filteredTrees.map(tree => (
-              <Marker
-                key={tree._id || tree.id}
-                position={tree.latLng}
-                icon={treeGreenIcon}
-                eventHandlers={{
-                  click: () => setSelectedTree(tree),
-                }}
-              >
-                <Popup>
-                  <strong>{tree.name || 'Arbre sans nom'}</strong>
-                  <br />
-                  Espèce: {tree.species || 'Non spécifiée'}
-                </Popup>
-              </Marker>
-            ))}
-
-            {/* Marker sur coordonnées saisies si aucun arbre sélectionné */}
-            {searchedTree && searchedTree.latLng && !selectedTree && (
-              <Marker position={searchedTree.latLng} icon={treeGreenIcon}>
-                <Popup>Coordonnées sélectionnées</Popup>
-              </Marker>
-            )}
-          </MapContainer>
-        </div>
-
-        <div className="details-panel" style={{ marginTop: '20px' }}>
-          {selectedTree ? (
-            <>
-              <Card title="Détails de l’arbre sélectionné" variant="outlined">
-                <Descriptions column={1}>
-                  <Descriptions.Item label="Nom">
-                    {selectedTree.name || 'Non spécifié'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Espèce">
-                    {selectedTree.species || 'Non spécifiée'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Adresse">
-                    {selectedTree.address || 'Non spécifiée'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Coordonnées">
-                    {selectedTree.latLng[0].toFixed(6)}, {selectedTree.latLng[1].toFixed(6)}
-                  </Descriptions.Item>
-                </Descriptions>
+                {selectedTree ? (
+                  <Descriptions column={1} size="small">
+                    <Descriptions.Item label="Code" labelStyle={{ fontWeight: 'bold', color: COLORS.textDark }}>
+                      <Text style={{ color: COLORS.textMedium }}>{selectedTree.code || 'Non spécifié'}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Nom" labelStyle={{ fontWeight: 'bold', color: COLORS.textDark }}>
+                      <Text style={{ color: COLORS.textMedium }}>{selectedTree.name || 'Non spécifié'}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Espèce" labelStyle={{ fontWeight: 'bold', color: COLORS.textDark }}>
+                      <Text style={{ color: COLORS.textMedium }}>{selectedTree.species || 'Non spécifiée'}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Genre" labelStyle={{ fontWeight: 'bold', color: COLORS.textDark }}>
+                      <Text style={{ color: COLORS.textMedium }}>{selectedTree.genus || 'Non spécifiée'}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Espace vert" labelStyle={{ fontWeight: 'bold', color: COLORS.textDark }}>
+                      <Text style={{ color: COLORS.textMedium }}>{selectedTree.greenSpace || 'Non spécifiée'}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Age" labelStyle={{ fontWeight: 'bold', color: COLORS.textDark }}>
+                      <Text style={{ color: COLORS.textMedium }}>{selectedTree.age || 'Non spécifiée'}</Text>
+                    </Descriptions.Item>
+                  </Descriptions>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px' }}>
+                    <EnvironmentOutlined style={{ fontSize: '32px', color: COLORS.divider }} />
+                    <Text type="secondary" style={{ display: 'block', marginTop: '8px', color: COLORS.textMedium }}>
+                      Sélectionnez un arbre sur la carte pour voir ses détails
+                    </Text>
+                  </div>
+                )}
               </Card>
 
               <Card
-                title={`Questionnaire sur l'environnement de "${
-                  selectedTree.name || 'cet arbre'
-                }"`}
-                style={{ marginTop: 20 }}
-                variant="outlined"
+                title={
+                  <Space>
+                    <ClusterOutlined style={{ color: COLORS.primary }} />
+                    <Title level={4} style={{ margin: 0, color: COLORS.primary }}>Donner votre avis</Title>
+                  </Space>
+                }
+                bordered={false}
+                className="questionnaire-card"
+                headStyle={{ 
+                  borderBottom: `2px solid ${COLORS.primaryLight}`,
+                  background: COLORS.cardBackground
+                }}
               >
-                <Form layout="vertical">
-                  <Form.Item label="Qualité de l'air">
-                    <Rate
-                      value={ratings.question1}
-                      onChange={value => handleRatingChange('question1', value)}
-                    />
-                  </Form.Item>
-                  <Form.Item label="Propreté des environs">
-                    <Rate
-                      value={ratings.question2}
-                      onChange={value => handleRatingChange('question2', value)}
-                    />
-                  </Form.Item>
-                  <Form.Item label="Niveau de bruit">
-                    <Rate
-                      value={ratings.question3}
-                      onChange={value => handleRatingChange('question3', value)}
-                    />
-                  </Form.Item>
-                  <Form.Item label="Accessibilité de l'arbre">
-                    <Rate
-                      value={ratings.question4}
-                      onChange={value => handleRatingChange('question4', value)}
-                    />
-                  </Form.Item>
-                  <Form.Item label="État général de l'arbre">
-                    <Rate
-                      value={ratings.question5}
-                      onChange={value => handleRatingChange('question5', value)}
-                    />
-                  </Form.Item>
-                  <Button type="primary" onClick={handleSubmitRatings}>
-                    Envoyer l'avis
-                  </Button>
-                </Form>
+                {selectedTree ? (
+                  <div className="questionnaire-content">
+                    <Tabs 
+                      activeKey={activeTab}
+                      onChange={setActiveTab}
+                      centered
+                      animated
+                      tabBarStyle={{ marginBottom: '16px' }}
+                    >
+                      <TabPane 
+                        tab={
+                          <span style={{ display: 'flex', alignItems: 'center' }}>
+                            <StarOutlined style={{ marginRight: '8px', color: COLORS.rating }} />
+                            <span style={{ color: COLORS.textDark }}>Évaluation</span>
+                          </span>
+                        } 
+                        key="ratings"
+                      >
+                        <Form layout="vertical" size="small">
+                          {RATING_QUESTIONS.map(question => (
+                            <Form.Item 
+                              key={question.key} 
+                              label={<Text strong style={{ color: COLORS.textDark }}>{question.label}</Text>}
+                              style={{ marginBottom: '16px' }}
+                            >
+                              <Rate 
+                                value={ratings[question.key]} 
+                                onChange={v => handleRatingChange(question.key, v)} 
+                                style={{ color: COLORS.rating }}
+                              />
+                            </Form.Item>
+                          ))}
+                          <Form.Item>
+                            <Button
+                              type="primary"
+                              onClick={handleSubmitRating}
+                              loading={submitting}
+                              block
+                              size="large"
+                              style={{ 
+                                backgroundColor: COLORS.primary,
+                                borderColor: COLORS.primary
+                              }}
+                            >
+                              Envoyer l'évaluation
+                            </Button>
+                          </Form.Item>
+                        </Form>
+                      </TabPane>
+                      <TabPane 
+                        tab={
+                          <span style={{ display: 'flex', alignItems: 'center' }}>
+                            <MessageOutlined style={{ marginRight: '8px', color: COLORS.comment }} />
+                            <span style={{ color: COLORS.textDark }}>Commentaire</span>
+                          </span>
+                        } 
+                        key="comments"
+                      >
+                        <Form layout="vertical" form={commentForm} onFinish={handleSubmitComment}>
+                          <Form.Item
+                            name="comment"
+                            rules={[
+                              { required: true, message: 'Veuillez saisir un commentaire' },
+                              { max: 500, message: 'Le commentaire ne doit pas dépasser 500 caractères' }
+                            ]}
+                          >
+                            <Input.TextArea 
+                              rows={4} 
+                              placeholder="Partagez votre expérience avec cet arbre..." 
+                              showCount 
+                              maxLength={500}
+                              style={{ borderRadius: '8px' }}
+                            />
+                          </Form.Item>
+                          <Form.Item>
+                            <Button 
+                              type="primary" 
+                              htmlType="submit"
+                              loading={submitting}
+                              block
+                              size="large"
+                              style={{ 
+                                backgroundColor: COLORS.primary,
+                                borderColor: COLORS.primary
+                              }}
+                            >
+                              Publier le commentaire
+                            </Button>
+                          </Form.Item>
+                        </Form>
+                      </TabPane>
+                    </Tabs>
+                    
+                    <RatingSummary comments={comments} />
+                  </div>
+                ) : (
+                  <div className="no-tree-selected" style={{ textAlign: 'center', padding: '20px' }}>
+                    <ClusterOutlined style={{ fontSize: '32px', color: COLORS.divider }} />
+                    <Text type="secondary" style={{ display: 'block', marginTop: '8px', color: COLORS.textMedium }}>
+                      Sélectionnez un arbre pour donner votre avis
+                    </Text>
+                  </div>
+                )}
               </Card>
-            </>
-          ) : (
-            <div className="empty-selection" style={{ marginTop: 20 }}>
-              {searchedTree
-                ? "Aucun arbre trouvé à ces coordonnées."
-                : "Sélectionnez un arbre sur la carte ou recherchez par coordonnées."}
-            </div>
-          )}
+            </Space>
+          </Col>
+        </Row>
+      </Content>
 
-          <div style={{ marginTop: 20 }}>
-            <Card title="Liste complète des arbres" variant="outlined">
-              {filteredTrees.length > 0 ? (
-                <Collapse accordion items={collapseItems} />
-              ) : (
-                <p>Aucun arbre ne correspond aux filtres.</p>
-              )}
+      <Footer className="tree-list-footer" style={{ background: COLORS.cardBackground, padding: '24px' }}>
+        <Row gutter={[24, 24]}>
+          <Col span={24}>
+            <Card
+              title={
+                <Space>
+                  <UnorderedListOutlined style={{ color: COLORS.primary }} />
+                  <Title level={4} style={{ margin: 0, color: COLORS.primary }}>Liste complète des arbres</Title>
+                </Space>
+              }
+              bordered={false}
+              className="tree-list-card"
+              headStyle={{ 
+                borderBottom: `2px solid ${COLORS.primaryLight}`,
+                background: COLORS.cardBackground
+              }}
+              bodyStyle={{ padding: '0' }}
+            >
+              <Collapse accordion ghost expandIconPosition="right">
+                {Array.isArray(trees) && trees.map(tree => (
+                  <Panel
+                    key={tree.id}
+                    header={
+                      <Space>
+                        <Text strong style={{ fontSize: '16px', color: COLORS.textDark }}>
+                          {tree.name || 'Arbre sans nom'}
+                        </Text>
+                        <Text type="secondary" style={{ color: COLORS.textMedium }}>
+                          {tree.species || 'Non spécifiée'}
+                        </Text>
+                      </Space>
+                    }
+                    extra={
+                      <Button 
+                        type="link" 
+                        size="small" 
+                        icon={<EnvironmentOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTree(tree);
+                          setMapCenter(tree.latLng);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        style={{ color: COLORS.primary }}
+                      >
+                        Voir sur la carte
+                      </Button>
+                    }
+                    style={{ 
+                      borderBottom: `1px solid ${COLORS.divider}`,
+                      padding: '12px 16px',
+                      background: COLORS.cardBackground
+                    }}
+                  >
+                    <Space direction="vertical" size="small" style={{ padding: '8px 0' }}>
+                      <Text style={{ color: COLORS.textDark }}>
+                        <Text strong>Adresse: </Text>
+                        {tree.address || 'Non spécifiée'}
+                      </Text>
+                      <Text style={{ color: COLORS.textDark }}>
+                        <Text strong>Coordonnées: </Text>
+                        <Text code style={{ color: COLORS.primary }}>
+                          {tree.latLng[0].toFixed(6)}, {tree.latLng[1].toFixed(6)}
+                        </Text>
+                      </Text>
+                    </Space>
+                  </Panel>
+                ))}
+              </Collapse>
             </Card>
-          </div>
-        </div>
-      </div>
-    </div>
+          </Col>
+          
+          {selectedTree && (
+            <Col span={24}>
+              <Card
+                title={
+                  <Space>
+                    <MessageOutlined style={{ color: COLORS.primary }} />
+                    <Title level={4} style={{ margin: 0, color: COLORS.primary }}>Commentaires</Title>
+                  </Space>
+                }
+                bordered={false}
+                className="comments-card"
+                headStyle={{ 
+                  borderBottom: `2px solid ${COLORS.primaryLight}`,
+                  background: COLORS.cardBackground
+                }}
+              >
+                <div className="comments-section">
+                  {commentsLoading ? (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                      <Spin tip="Chargement des commentaires..." />
+                    </div>
+                  ) : (
+                    <>
+                      {Array.isArray(comments) && comments.length > 0 ? (
+                        <List
+                          itemLayout="horizontal"
+                          dataSource={comments}
+                          renderItem={comment => (
+                            <List.Item
+                              style={{ 
+                                padding: '16px',
+                                borderBottom: `1px solid ${COLORS.divider}`,
+                                transition: 'background-color 0.3s',
+                                ':hover': {
+                                  backgroundColor: '#fafafa'
+                                }
+                              }}
+                            >
+                              <List.Item.Meta
+                                avatar={
+                                  <Avatar 
+                                    src={comment.user?.avatar} 
+                                    icon={<UserOutlined />}
+                                    style={{ backgroundColor: COLORS.primaryLight }}
+                                  />
+                                }
+                                title={<Text strong style={{ color: COLORS.textDark }}>{comment.user?.username || 'Anonyme'}</Text>}
+                                description={
+                                  <>
+                                    {comment.comment && (
+                                      <Text style={{ 
+                                        margin: '8px 0', 
+                                        fontSize: '15px',
+                                        lineHeight: '1.6',
+                                        color: COLORS.textMedium
+                                      }}>
+                                        {comment.comment}
+                                      </Text>
+                                    )}
+                                    {comment.ratings && (
+                                      <div style={{ margin: '8px 0' }}>
+                                        <Rate 
+                                          disabled 
+                                          value={Object.values(comment.ratings).reduce((a, b) => a + b, 0) / 5} 
+                                          style={{ fontSize: '14px', color: COLORS.rating }}
+                                        />
+                                      </div>
+                                    )}
+                                    <Text type="secondary" style={{ fontSize: '12px', color: COLORS.textMedium }}>
+                                      {new Date(comment.date).toLocaleDateString('fr-FR', {
+                                        day: 'numeric',
+                                        month: 'long',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </Text>
+                                  </>
+                                }
+                              />
+                            </List.Item>
+                          )}
+                        />
+                      ) : (
+                        <div style={{ textAlign: 'center', padding: '20px' }}>
+                          <MessageOutlined style={{ fontSize: '32px', color: COLORS.divider }} />
+                          <Text type="secondary" style={{ display: 'block', marginTop: '8px', color: COLORS.textMedium }}>
+                            Aucun commentaire pour cet arbre
+                          </Text>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </Card>
+            </Col>
+          )}
+        </Row>
+      </Footer>
+    </Layout>
   );
 };
 
 export default TreeMapPage;
-
-

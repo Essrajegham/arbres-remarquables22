@@ -24,12 +24,18 @@ const AddAdminForm = ({ onAdminAdded }) => {
     return isImage && isLt5M;
   };
 
-  const handleUpload = ({ file }) => {
-    const realFile = file.originFileObj || file;
-    if (beforeUpload(realFile)) {
-      setAvatar(realFile);
-    }
-    return false;
+  const handleAvatarClick = (e) => {
+    // Créer un input file caché
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (event) => {
+      const file = event.target.files[0];
+      if (file && beforeUpload(file)) {
+        setAvatar(file);
+      }
+    };
+    input.click();
   };
 
   const onFinish = async (values) => {
@@ -68,7 +74,15 @@ const AddAdminForm = ({ onAdminAdded }) => {
           <Text type="secondary">Remplissez les informations pour créer un compte admin</Text>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+        <div 
+          style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            marginBottom: 16,
+            cursor: 'pointer'
+          }}
+          onClick={handleAvatarClick}
+        >
           <Avatar
             src={avatar ? URL.createObjectURL(avatar) : null}
             icon={!avatar && <UserOutlined />}
@@ -85,28 +99,6 @@ const AddAdminForm = ({ onAdminAdded }) => {
           layout="vertical"
           onFinish={onFinish}
         >
-          <Form.Item label="Photo de profil">
-            <Upload
-              name="avatar"
-              showUploadList={false}
-              beforeUpload={beforeUpload}
-              onChange={handleUpload}
-              accept="image/*"
-            >
-              <Button
-                icon={<UploadOutlined />}
-                type="dashed"
-                block
-                style={{
-                  borderColor: '#2e7d32',
-                  color: '#2e7d32'
-                }}
-              >
-                {avatar ? 'Changer l’image' : 'Ajouter une image'}
-              </Button>
-            </Upload>
-          </Form.Item>
-
           <Form.Item
             name="username"
             label="Nom d'utilisateur"
@@ -171,7 +163,7 @@ const AddAdminForm = ({ onAdminAdded }) => {
                 fontWeight: 500
               }}
             >
-              Créer l’administrateur
+              Créer l'administrateur
             </Button>
           </Form.Item>
         </Form>

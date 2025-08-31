@@ -1,3 +1,4 @@
+// Navbar.js
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -9,11 +10,10 @@ import {
   UserOutlined,
   LogoutOutlined,
   MenuOutlined,
-  UserSwitchOutlined,
   PlusOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
-import { Dropdown, Menu, Avatar } from 'antd';
+import { Dropdown, Avatar } from 'antd';
 import './Navbar.css';
 
 const Navbar = ({ user, onLogout }) => {
@@ -41,6 +41,15 @@ const Navbar = ({ user, onLogout }) => {
       icon: <UserOutlined />,
       label: <Link to="/profile">Mon Profil</Link>,
     },
+    ...(user?.role === 'admin' || user?.role === 'superadmin'
+      ? [
+          {
+            key: 'avis',
+            icon: <UnorderedListOutlined />,
+            label: <Link to="/avis-list">Liste des avis</Link>,
+          },
+        ]
+      : []),
     {
       key: 'logout',
       icon: <LogoutOutlined />,
@@ -55,10 +64,12 @@ const Navbar = ({ user, onLogout }) => {
       label: <Link to="/ajouter-utilisateur">Ajouter Utilisateur</Link>,
     },
     ...(user?.role === 'superadmin'
-      ? [{
-          key: 'add-admin',
-          label: <Link to="/add-admin">Ajouter Admin</Link>,
-        }]
+      ? [
+          {
+            key: 'add-admin',
+            label: <Link to="/add-admin">Ajouter Admin</Link>,
+          },
+        ]
       : []),
     {
       key: 'add-tree',
@@ -71,11 +82,21 @@ const Navbar = ({ user, onLogout }) => {
       key: 'list-users',
       label: <Link to="/users-list">Liste des Utilisateurs</Link>,
     },
+    ...(user?.role === 'admin' || user?.role === 'superadmin'
+      ? [
+          {
+            key: 'list-avis',
+            label: <Link to="/avis-list">Liste des avis</Link>,
+          },
+        ]
+      : []),
     ...(user?.role === 'superadmin'
-      ? [{
-          key: 'list-admins',
-          label: <Link to="/admins-list">Liste des Admins</Link>,
-        }]
+      ? [
+          {
+            key: 'list-admins',
+            label: <Link to="/admins-list">Liste des Admins</Link>,
+          },
+        ]
       : []),
   ];
 

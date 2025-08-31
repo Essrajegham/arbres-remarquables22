@@ -11,7 +11,7 @@ import PasswordResetFlow from './components/PasswordResetFlow';
 import AdminDashboard from './components/AdminDashboard';
 import TreeDetails from './components/TreeDetails';
 import PrivateRoute from './components/PrivateRoute';
-
+import TreeEdit from './components/TreeEdit';
 import AddAdminPage from './pages/AddAdminPage';
 import AddUserPage from './pages/AddUserPage';
 import AddTreePage from './pages/AddTreePage';
@@ -24,7 +24,7 @@ import TreeProvider from './contexts/TreeContext';
 import UsersList from './pages/UsersList';
 import AdminsList from './pages/AdminsList';
 import AvisPage from './pages/AvisPage';
-
+import AvisListPage from './pages/AvisListPage';
 import './styles/variables.css';
 
 const antIcon = <LoadingOutlined style={{ fontSize: 48 }} spin />;
@@ -79,7 +79,6 @@ function App() {
               <Route path="/forgot-password" element={<PasswordResetFlow />} />
               <Route path="/dashboard" element={<PrivateRoute>{user?.role === 'admin' ? <Navigate to="/admin" /> : <Navigate to="/trees" />}</PrivateRoute>} />
               <Route path="/ajouter-utilisateur" element={<PrivateRoute allowedRoles={['admin', 'superadmin']}><AddUserPage /></PrivateRoute>} />
-              <Route path="/admin" element={<PrivateRoute allowedRoles={['admin', 'superadmin']}><AdminDashboard /></PrivateRoute>} />
               <Route path="/add-admin" element={<PrivateRoute allowedRoles={['superadmin']}><AddAdminPage /></PrivateRoute>} />
               <Route path="/add-tree" element={<PrivateRoute allowedRoles={['admin', 'superadmin']}><AddTreePage /></PrivateRoute>} />
               <Route path="/trees" element={<PrivateRoute><TreesPage /></PrivateRoute>} />
@@ -89,8 +88,9 @@ function App() {
               <Route path="/users-list" element={<PrivateRoute allowedRoles={['admin', 'superadmin']}><UsersList /></PrivateRoute>} />
               <Route path="/admins-list" element={<PrivateRoute allowedRoles={['superadmin']}><AdminsList /></PrivateRoute>} />
               <Route path="/avis" element={<AvisPage />} />
+              <Route path="/avis-list" element={<PrivateRoute allowedRoles={['superadmin' , 'admin']}><AvisListPage /></PrivateRoute>} />
+              <Route path="/trees/edit/:id" element={<PrivateRoute allowedRoles={['superadmin' , 'admin']}><TreeEdit /></PrivateRoute>} />
 
-              {/* Supprime les doublons */}
             </Routes>
           </main>
           <Footer />

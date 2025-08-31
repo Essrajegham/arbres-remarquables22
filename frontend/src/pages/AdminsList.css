@@ -1,0 +1,67 @@
+/* Texte copiable ID en vert */
+.custom-copy-text.ant-typography-copy {
+  color: #237804 !important;
+}
+
+.custom-copy-text.ant-typography-copy:hover {
+  color: #145214 !important;
+}
+
+/* Pagination - tous les numéros et boutons en vert */
+
+.ant-pagination {
+  /* Optionnel : pour forcer tout en vert */
+  color: #237804 !important;
+}
+
+.ant-pagination-item {
+  border-color: #237804 !important;
+  color: #237804 !important;
+}
+
+.ant-pagination-item a {
+  color: #237804 !important;
+}
+
+.ant-pagination-item-active {
+  background-color: #237804 !important;
+  border-color: #237804 !important;
+  color: #fff !important;
+}
+
+.ant-pagination-item-active a {
+  color: #fff !important;
+}
+
+.ant-pagination-item:hover {
+  border-color: #237804 !important;
+  color: #237804 !important;
+}
+
+.ant-pagination-item:hover a {
+  color: #237804 !important;
+}
+
+.ant-pagination-prev, 
+.ant-pagination-next, 
+.ant-pagination-jump-prev, 
+.ant-pagination-jump-next {
+  border-color: #237804 !important;
+  color: #237804 !important;
+}
+
+.ant-pagination-prev:hover,
+.ant-pagination-next:hover,
+.ant-pagination-jump-prev:hover,
+.ant-pagination-jump-next:hover {
+  border-color: #237804 !important;
+  color: #237804 !important;
+}
+
+.ant-pagination-options-size-changer {
+  color: #237804 !important;
+}
+
+.ant-pagination-options-size-changer:hover {
+  color: #237804 !important;
+}

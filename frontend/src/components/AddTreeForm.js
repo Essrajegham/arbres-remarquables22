@@ -40,6 +40,7 @@ const AddTreeForm = () => {
 
     try {
       const formData = new FormData();
+      formData.append('code', values.code);
       formData.append('name', values.name);
       formData.append('species', values.species);
       formData.append('age', values.age);
@@ -81,6 +82,9 @@ formData.append('location[coordinates][]', position[0]); // ✅ latitude
       <h2 style={{ color: '#2e7d32', marginBottom: 24 }}>Ajouter un arbre remarquable</h2>
 
       <Form form={form} layout="vertical" onFinish={handleSubmit}>
+         <Form.Item name="code" label="Code" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
         <Form.Item name="name" label="Nom" rules={[{ required: true }]}>
           <Input />
         </Form.Item>

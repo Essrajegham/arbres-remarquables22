@@ -1,59 +1,78 @@
 import React, { useState } from "react";
 import { Form, Input, Button, message } from "antd";
 import { LockOutlined, SafetyOutlined } from '@ant-design/icons';
-import "./ResetPassword.css"; // Créez ce fichier CSS
+import "./ResetPassword.css";
 
 export default function ResetPassword({ email, onResetSuccess }) {
   const [loading, setLoading] = useState(false);
 
-  const onFinish = async ({ code, newPassword }) => {
+  const onFinish = async (values) => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/auth/reset-password", {
+      const response = await fetch("http://localhost:5000/api/auth/reset-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code, newPassword }),
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ 
+          token: values.code, 
+          newPassword: values.newPassword,
+          email: email 
+        }),
+        credentials: 'include'
       });
-      const data = await res.json();
-      if (res.ok) {
-        message.success("Mot de passe réinitialisé avec succès !");
-        onResetSuccess();
-      } else {
-        message.error(data.error || "Erreur lors de la réinitialisation.");
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors de la réinitialisation");
       }
-    } catch (err) {
-      message.error("Erreur réseau : " + err.message);
+
+      message.success("Mot de passe réinitialisé avec succès !");
+      onResetSuccess();
+    } catch (error) {
+      message.error(error.message || "Une erreur est survenue");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+  
 
   return (
     <div className="reset-password-container">
       <div className="reset-password-card">
-        <h2 className="reset-title">Réinitialisation du mot de passe</h2>
+        <h2>Réinitialisation du mot de passe</h2>
+        <p>Un code a été envoyé à {email}</p>
         
         <Form
-          name="reset-password"
+          name="reset_password"
+          initialValues={{ remember: true }}
           onFinish={onFinish}
-          layout="vertical"
+          autoComplete="off"
         >
           <Form.Item
             name="code"
-            rules={[{ required: true, message: 'Veuillez saisir le code' }]}
+            rules={[{ required: true, message: 'Veuillez entrer le code de vérification' }]}
           >
             <Input 
               prefix={<SafetyOutlined />} 
-              placeholder="Code reçu par email" 
+              placeholder="Code de vérification" 
             />
           </Form.Item>
 
           <Form.Item
             name="newPassword"
-            rules={[{ required: true, message: 'Veuillez saisir le nouveau mot de passe' }]}
+            rules={[{ 
+              required: true, 
+              message: 'Veuillez entrer votre nouveau mot de passe',
+              min: 8,
+              message: 'Le mot de passe doit contenir au moins 8 caractères'
+            }]}
           >
-            <Input.Password 
-              prefix={<LockOutlined />} 
-              placeholder="Nouveau mot de passe" 
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="Nouveau mot de passe"
             />
           </Form.Item>
 
@@ -62,9 +81,9 @@ export default function ResetPassword({ email, onResetSuccess }) {
               type="primary" 
               htmlType="submit" 
               loading={loading}
-              className="reset-button"
+              block
             >
-              Réinitialiser
+              Réinitialiser le mot de passe
             </Button>
           </Form.Item>
         </Form>

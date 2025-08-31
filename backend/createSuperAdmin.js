@@ -1,26 +1,47 @@
-const User = require('./models/User');
+require('dotenv').config();
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const User = require('./models/User'); // adapte si besoin
 
-(async () => {
+async function createSuperAdmin() {
   try {
-    const existing = await User.findOne({ role: 'superadmin' });
-    if (existing) {
-      console.log('Superadmin déjà créé');
+    await mongoose.connect(process.env.MONGO_URI);
+
+    const { SUPERADMIN_USERNAME, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD } = process.env;
+
+    if (!SUPERADMIN_USERNAME || !SUPERADMIN_EMAIL || !SUPERADMIN_PASSWORD) {
+      throw new Error('Variables d’environnement superadmin manquantes');
+    }
+
+    const existingAdmin = await User.findOne({
+      $or: [{ email: SUPERADMIN_EMAIL }, { username: SUPERADMIN_USERNAME }]
+    });
+
+    if (existingAdmin) {
+      console.log('Superadmin déjà existant.');
+      await mongoose.disconnect();
       return;
     }
 
-    const hashedPassword = await bcrypt.hash('superadmin123', 10);
-    const superadmin = new User({
-      username: 'superadmin',
+    const hashedPassword = await bcrypt.hash(SUPERADMIN_PASSWORD, 12);
+
+    const superAdmin = new User({
+      username: SUPERADMIN_USERNAME,
+      email: SUPERADMIN_EMAIL,
       password: hashedPassword,
       role: 'superadmin',
-      email: 'superadmin@example.com',
-      fullName: 'Super Admin'
+      fullName: 'Super Admin',       // **Ajouter ici**
+      profession: 'Administrateur'   // **Ajouter ici**
     });
 
-    await superadmin.save();
-    console.log('Superadmin créé avec succès');
+    await superAdmin.save();
+    console.log('Superadmin créé avec succès !');
+
+    await mongoose.disconnect();
   } catch (err) {
     console.error('Erreur création superadmin:', err);
+    process.exit(1);
   }
-})();
+}
+
+createSuperAdmin();

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, message, Upload } from 'antd';
 import { 
   UserOutlined, 
@@ -14,48 +14,102 @@ import './Register.css';
 const Register = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [avatar, setAvatar] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const navigate = useNavigate();
 
-  const beforeUpload = (file) => {
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
+
+  const validateFile = (file) => {
     const isImage = file.type.startsWith('image/');
-    if (!isImage) message.error('Vous ne pouvez uploader que des fichiers image!');
     const isLt5M = file.size / 1024 / 1024 < 5;
-    if (!isLt5M) message.error('La taille de l\'image ne doit pas dépasser 5MB!');
-    return isImage && isLt5M;
+    return { isImage, isLt5M };
+  };
+
+  const beforeUpload = (file) => {
+    const { isImage, isLt5M } = validateFile(file);
+    if (!isImage) {
+      message.error('Vous ne pouvez uploader que des fichiers image!');
+      return false;
+    }
+    if (!isLt5M) {
+      message.error('La taille de l\'image ne doit pas dépasser 5MB!');
+      return false;
+    }
+    return false; // Empêche l'upload automatique
   };
 
   const handleUpload = ({ file }) => {
-    if (beforeUpload(file)) {
-      setAvatar(file);
+    const { isImage, isLt5M } = validateFile(file);
+    if (!isImage || !isLt5M) return false;
+
+    if (avatarPreview) {
+      URL.revokeObjectURL(avatarPreview);
     }
-    return false;
+
+    if (file instanceof Blob || file instanceof File) {
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    } else {
+      message.error('Erreur lors du traitement de l\'image');
+    }
   };
 
   const onFinish = async (values) => {
-    setLoading(true);
-    const formData = new FormData();
-    if (avatar) formData.append('avatar', avatar);
-    Object.entries(values).forEach(([key, val]) => formData.append(key, val));
+    if (values.password !== values.confirmPassword) {
+      message.error('Les mots de passe ne correspondent pas');
+      return;
+    }
 
+    setLoading(true);
     try {
+      const formData = new FormData();
+
+      // Utiliser les bons noms de champs côté backend :
+      formData.append('username', values.username);
+      formData.append('email', values.email);
+      formData.append('password', values.password);
+      formData.append('fullName', values.fullName);
+      formData.append('profession', values.profession);
+
+      if (avatarFile) {
+        formData.append('avatar', avatarFile);
+      }
+
       await axios.post("http://localhost:5000/api/auth/register", formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+
       message.success('Inscription réussie !');
       form.resetFields();
-      setAvatar(null);
+      setAvatarFile(null);
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview);
+        setAvatarPreview(null);
+      }
       navigate('/login');
-    } catch (err) {
-      message.error(err.response?.data?.error || "Erreur lors de l'inscription");
+    } catch (error) {
+      console.error('Erreur inscription:', error.response?.data || error);
+      const errorMessage = error.response?.data?.error || 
+                           error.response?.data?.message || 
+                           "Erreur lors de l'inscription";
+      message.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
     <div className="register-container">
       <div className="register-card fade-in">
         <h1 className="register-title">Inscription</h1>
+        
         <div className="avatar-upload-wrapper">
           <Upload
             name="avatar"
@@ -64,17 +118,28 @@ const Register = () => {
             beforeUpload={beforeUpload}
             onChange={handleUpload}
             accept="image/*"
+            disabled={loading}
+            customRequest={({ onSuccess }) => onSuccess("ok")} // Empêche l'upload automatique
           >
-            {avatar ? (
-              <img
-                src={URL.createObjectURL(avatar)}
-                alt="avatar"
-                className="avatar-image"
-              />
+            {avatarPreview ? (
+              <div className="avatar-preview-container">
+                <img
+                  src={avatarPreview}
+                  alt="Avatar preview"
+                  className="avatar-image"
+                  onError={() => {
+                    URL.revokeObjectURL(avatarPreview);
+                    setAvatarPreview(null);
+                  }}
+                />
+                <div className="avatar-edit-overlay">
+                  <UploadOutlined />
+                </div>
+              </div>
             ) : (
               <div className="upload-placeholder">
                 <UploadOutlined style={{ fontSize: 28, color: 'var(--primary-color)' }} />
-                <div style={{ marginTop: 8 }}>Uploader une photo</div>
+                <div style={{ marginTop: 8 }}>Ajouter une photo</div>
               </div>
             )}
           </Upload>
@@ -85,65 +150,99 @@ const Register = () => {
             name="username"
             label="Nom d'utilisateur"
             rules={[
-              { required: true, message: "Nom d'utilisateur requis" },
-              { min: 3, message: "Minimum 3 caractères" }
+              { required: true, message: "Ce champ est obligatoire" },
+              { min: 3, message: "Minimum 3 caractères" },
+              { max: 20, message: "Maximum 20 caractères" }
             ]}
           >
-            <Input prefix={<UserOutlined />} placeholder="Nom d'utilisateur" />
+            <Input 
+              prefix={<UserOutlined />} 
+              placeholder="Votre nom d'utilisateur" 
+              disabled={loading}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="email"
+            label="Adresse email"
+            rules={[
+              { required: true, message: "Ce champ est obligatoire" },
+              { type: 'email', message: "Email non valide" }
+            ]}
+          >
+            <Input 
+              prefix={<MailOutlined />} 
+              placeholder="Votre email" 
+              disabled={loading}
+            />
           </Form.Item>
 
           <Form.Item
             name="password"
             label="Mot de passe"
-            rules={[{ required: true, message: "Mot de passe requis" }, { min: 6 }]}
+            rules={[
+              { required: true, message: "Ce champ est obligatoire" },
+              { min: 6, message: "Minimum 6 caractères" }
+            ]}
             hasFeedback
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Mot de passe" />
+            <Input.Password 
+              prefix={<LockOutlined />} 
+              placeholder="Votre mot de passe" 
+              disabled={loading}
+            />
           </Form.Item>
 
           <Form.Item
-            name="confirm"
+            name="confirmPassword"
             label="Confirmer le mot de passe"
             dependencies={['password']}
-            hasFeedback
             rules={[
-              { required: true, message: "Confirmation requise" },
+              { required: true, message: "Ce champ est obligatoire" },
               ({ getFieldValue }) => ({
                 validator(_, value) {
-                  if (!value || getFieldValue('password') === value) return Promise.resolve();
+                  if (!value || getFieldValue('password') === value) {
+                    return Promise.resolve();
+                  }
                   return Promise.reject(new Error('Les mots de passe ne correspondent pas'));
                 },
               }),
             ]}
+            hasFeedback
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Confirmer" />
+            <Input.Password 
+              prefix={<LockOutlined />} 
+              placeholder="Confirmez votre mot de passe" 
+              disabled={loading}
+            />
           </Form.Item>
 
           <Form.Item
             name="fullName"
             label="Nom complet"
-            rules={[{ required: true, message: "Nom complet requis" }]}
-          >
-            <Input placeholder="Nom complet" />
-          </Form.Item>
-
-          <Form.Item
-            name="email"
-            label="Email"
             rules={[
-              { required: true, message: "Email requis" },
-              { type: 'email', message: "Email non valide" }
+              { required: true, message: "Ce champ est obligatoire" },
+              { min: 2, message: "Minimum 2 caractères" }
             ]}
           >
-            <Input prefix={<MailOutlined />} placeholder="Email" />
+            <Input 
+              placeholder="Votre nom complet" 
+              disabled={loading}
+            />
           </Form.Item>
 
           <Form.Item
             name="profession"
             label="Profession"
-            rules={[{ required: true, message: "Profession requise" }]}
+            rules={[
+              { required: true, message: "Ce champ est obligatoire" }
+            ]}
           >
-            <Input prefix={<EnvironmentOutlined />} placeholder="Profession" />
+            <Input 
+              prefix={<EnvironmentOutlined />} 
+              placeholder="Votre profession" 
+              disabled={loading}
+            />
           </Form.Item>
 
           <Form.Item>
@@ -155,12 +254,15 @@ const Register = () => {
               block
               size="large"
             >
-              S'inscrire
+              {loading ? 'Inscription en cours...' : 'S\'inscrire'}
             </Button>
           </Form.Item>
 
-          <div className="register-login-link" style={{ textAlign: 'center' }}>
-            Déjà un compte ? <Link to="/login">Connectez-vous</Link>
+          <div className="register-footer">
+            <span>Déjà un compte ? </span>
+            <Link to="/login" className="login-link">
+              Se connecter
+            </Link>
           </div>
         </Form>
       </div>

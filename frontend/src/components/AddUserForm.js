@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, message, Avatar, Card, Typography } from 'antd';
+import { Form, Input, Button, message, Avatar, Card, Typography, Upload } from 'antd';
 import {
   UserOutlined,
   MailOutlined,
   LockOutlined,
-  EnvironmentOutlined
+  EnvironmentOutlined,
+  CameraOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -14,6 +15,21 @@ const AddUserForm = ({ onUserAdded }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [avatar, setAvatar] = useState(null);
+
+  const beforeUpload = (file) => {
+    const isImage = file.type.startsWith('image/');
+    if (!isImage) {
+      message.error('Vous ne pouvez uploader que des fichiers image!');
+    }
+    const isLt2M = file.size / 1024 / 1024 < 2;
+    if (!isLt2M) {
+      message.error('La taille de l\'image doit être inférieure à 2MB!');
+    }
+    if (isImage && isLt2M) {
+      setAvatar(file);
+    }
+    return false; // Empêche l'upload automatique
+  };
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -49,15 +65,37 @@ const AddUserForm = ({ onUserAdded }) => {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-          <Avatar
-            src={avatar ? URL.createObjectURL(avatar) : null}
-            icon={!avatar && <UserOutlined />}
-            size={100}
-            style={{
-              backgroundColor: '#f0f9eb',
-              border: '2px solid #2e7d32'
-            }}
-          />
+          <Upload
+            name="avatar"
+            beforeUpload={beforeUpload}
+            showUploadList={false}
+            accept="image/*"
+          >
+            <div style={{ position: 'relative', cursor: 'pointer' }}>
+              <Avatar
+                src={avatar ? URL.createObjectURL(avatar) : null}
+                icon={!avatar && <UserOutlined />}
+                size={100}
+                style={{
+                  backgroundColor: '#f0f9eb',
+                  border: '2px solid #2e7d32'
+                }}
+              />
+              <div style={{
+                position: 'absolute',
+                bottom: 0,
+                right: 0,
+                backgroundColor: '#2e7d32',
+                borderRadius: '50%',
+                padding: 4,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <CameraOutlined style={{ color: 'white', fontSize: 16 }} />
+              </div>
+            </div>
+          </Upload>
         </div>
 
         <Form

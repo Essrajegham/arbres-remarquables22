@@ -1,67 +1,352 @@
+/* Structure principale */
 .trees-list-container {
-  max-width: 1280px;
-  margin: 0 auto;
   padding: 24px;
-  background-color: #f9f9f9;
-  box-shadow: 'none';
-  outline: 'none';
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-.filters-container {
-  margin-bottom: 24px;
+/* En-tête */
+.header-section {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.main-title {
+  color: #2e7d32;
+  margin-bottom: 8px;
+  font-size: 2rem;
+}
+
+.subtitle {
+  display: block;
+  margin-bottom: 16px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+/* Barre de recherche */
+.search-container {
+  max-width: 600px;
+  margin: 0 auto 24px;
+}
+
+.search-input {
+  border-radius: 20px;
+  padding: 10px 16px;
+}
+
+/* Grille des cartes */
+.trees-grid {
+  width: 100%;
+}
+
+.tree-list-item {
   display: flex;
-  justify-content: flex-start;
+  height: 100%;
+  padding: 12px !important;
 }
 
-.trees-card {
+/* Carte - Dimensions fixes */
+.tree-card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
-  border: 1px solid #d0d0d0 !important;
-}
-.ant-input:focus, .ant-input-focused {
-  border-color: #2e7d32 !important;
-  box-shadow: none !important;
+  border: none;
 }
 
-
-.trees-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(46, 125, 50, 0.15);
+/* Conteneur d'image fixe */
+.card-image-container {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
 }
 
-.details-button {
-  margin-top: 12px;
-  background-color: #2e7d32 !important;
-  border-color: #2e7d32 !important;
-  color: white !important;
+.tree-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.tree-card:hover .tree-card-image {
+  transform: scale(1.03);
+}
+
+.tree-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f6ffed;
+  color: #73d13d;
+  font-size: 48px;
+}
+
+/* Contenu de la carte */
+.tree-card-content {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
+}
+
+.tree-title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  min-height: 48px;
+}
+
+.tree-title .ant-typography {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.new-tag {
+  margin-left: 8px;
+  animation: pulse 2s infinite;
+}
+
+.meta-content {
+  flex: 1;
+}
+
+.tree-tags {
+  margin-bottom: 12px;
+}
+
+.tree-tags .ant-tag {
+  margin-bottom: 8px;
+}
+
+.tree-info {
+  margin-top: auto;
+  font-size: 14px;
+  color: #666;
+}
+
+.tree-info div {
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Boutons principaux */
+.ant-btn {
+  border-radius: 4px;
   font-weight: 500;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
-.details-button:hover {
-  background-color: #1b5e20 !important;
-  border-color: #1b5e20 !important;
+/* Boutons primaires */
+.ant-btn-primary {
+  background-color: #389e0d;
+  border-color: #389e0d;
 }
 
-.ant-input {
-  background-color: white !important;
-  border-radius: 8px !important;
-  border: 1px solid #ccc !important;
-  box-shadow: none !important;
-  outline: none !important;
+.ant-btn-primary:hover,
+.ant-btn-primary:focus {
+  background-color: #52c41a;
+  border-color: #52c41a;
+}
+
+/* Boutons danger */
+.ant-btn-danger {
+  color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+.ant-btn-danger:hover,
+.ant-btn-danger:focus {
+  color: #fff;
+  background-color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+/* Boutons par défaut */
+.ant-btn-default {
+  color: #595959;
+  border-color: #d9d9d9;
+}
+
+.ant-btn-default:hover,
+.ant-btn-default:focus {
+  color: #1890ff;
+  border-color: #1890ff;
+}
+
+/* Actions des cartes */
+.ant-card-actions {
+  background: #fafafa !important;
+  padding: 0 !important;
+  margin: 0;
+  border-top: 1px solid #f0f0f0 !important;
+  display: flex;
+}
+
+.ant-card-actions > li {
+  flex: 1;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-right: 1px solid #f0f0f0;
+}
+
+.ant-card-actions > li:last-child {
+  border-right: none;
+}
+
+.ant-card-actions .ant-btn {
+  width: 100%;
+  border-radius: 0;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* Styles spécifiques boutons cartes */
+.ant-card-actions .detail-btn {
+  background: #389e0d !important;
+  color: white !important;
+}
+
+.ant-card-actions .detail-btn:hover,
+.ant-card-actions .detail-btn:focus {
+  background: #389e0d !important;
+  color: white !important;
+  opacity: 0.9;
+}
+
+.ant-card-actions .edit-btn {
+  color: #595959;
+}
+
+.ant-card-actions .edit-btn:hover {
+  color: #1890ff !important;
+  background: #f0f9ff !important;
+}
+
+.ant-card-actions .delete-btn {
+  color: #ff4d4f;
+}
+
+.ant-card-actions .delete-btn:hover {
+  background: #fff2f0 !important;
+}
+
+/* Animation */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .card-image-container {
+    height: 180px;
+  }
+  
+  .ant-btn {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+  
+  .ant-card-actions .ant-btn {
+    height: 40px;
+  }
 }
 
 @media (max-width: 768px) {
   .trees-list-container {
+    padding: 16px;
+  }
+  
+  .card-image-container {
+    height: 160px;
+  }
+  
+  .tree-card-content {
     padding: 12px;
-    
+    min-height: 160px;
   }
-
-  .filters-container {
-    flex-direction: column;
+  
+  .ant-btn {
+    padding: 5px 10px;
+    font-size: 13px;
+    gap: 4px;
+    min-width: 80px;
+    min-height: 32px;
   }
+  
+  .ant-card-actions .ant-btn {
+    height: 38px;
+    font-size: 13px;
+  }
+}
 
-  .filters-container .ant-input {
-    width: 100% !important;
-    margin-bottom: 12px;
+@media (max-width: 576px) {
+  .card-image-container {
+    height: 140px;
+  }
+  
+  .tree-card-content {
+    min-height: 140px;
+  }
+  
+  .ant-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    min-width: 70px;
+    min-height: 28px;
+  }
+  
+  .ant-card-actions .ant-btn {
+    height: 36px;
+    font-size: 12px;
+  }
+  
+  .ant-card-actions > li {
+    flex: none;
+    width: 33.33%;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-title {
+    font-size: 1.5rem;
+  }
+  
+  .subtitle {
+    font-size: 0.9rem;
+  }
+  
+  .tree-card-content {
+    padding: 10px;
+  }
+  
+  .tree-info {
+    font-size: 12px;
+  }
+  
+  .ant-card-actions .ant-btn {
+    height: 34px;
+    font-size: 11px;
   }
 }

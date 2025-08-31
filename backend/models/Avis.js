@@ -1,15 +1,43 @@
 const mongoose = require('mongoose');
 
-const avisSchema = new mongoose.Schema({
-  treeId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Tree' },
-  userId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
+const AvisSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, "L'utilisateur est requis"]
+  },
+  tree: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tree',
+    required: [true, "L'arbre est requis"]
+  },
   ratings: {
-    question1: { type: Number, required: true },
-    question2: { type: Number, required: true },
-    question3: { type: Number, required: true },
-    question4: { type: Number, required: true },
-    question5: { type: Number, required: true },
+    airQuality: { type: Number, min: 1, max: 5 },
+    cleanliness: { type: Number, min: 1, max: 5 },
+    noiseLevel: { type: Number, min: 1, max: 5 },
+    accessibility: { type: Number, min: 1, max: 5 },
+    treeCondition: { type: Number, min: 1, max: 5 }
+  },
+  comment: {
+    type: String,
+    maxlength: [500, "Le commentaire ne doit pas dépasser 500 caractères"],
+    trim: true
+  },
+  date: {
+    type: Date,
+    default: Date.now
   }
-}, { timestamps: true });
+}, {
+  timestamps: true,
+  toJSON: {
+    virtuals: true,
+    transform: function(doc, ret) {
+      ret.id = ret._id;
+      delete ret._id;
+      delete ret.__v;
+      return ret;
+    }
+  }
+});
 
-module.exports = mongoose.model('Avis', avisSchema);
+module.exports = mongoose.model('Avis', AvisSchema);

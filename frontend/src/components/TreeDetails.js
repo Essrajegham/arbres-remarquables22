@@ -1,176 +1,158 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Card, Spin, Descriptions, message, Badge, Carousel, Typography } from 'antd';
-import { LeftOutlined, EditOutlined, EnvironmentOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { getAuthHeader, handleApiError } from '../utils/auth';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { Spin, Alert, Card, Typography, Image } from 'antd';
 
-const { Title, Paragraph } = Typography;
-
-const healthStatusColors = {
-  excellent: 'green',
-  good: 'lime',
-  fair: 'gold',
-  poor: 'volcano',
-  dead: 'red',
-};
+const { Title, Paragraph, Text } = Typography;
 
 const TreeDetails = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [tree, setTree] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!id || id.length !== 24) {
+      setError('ID invalide');
+      setLoading(false);
+      return;
+    }
+
     const fetchTree = async () => {
       try {
-        setLoading(true);
-        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+        const response = await axios.get(`http://localhost:5000/api/trees/${id}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
 
-        const response = await axios.get(
-          `${apiUrl}/trees/${id}`,
-          { headers: getAuthHeader() }
-        );
-
-        if (!response.data.success) {
-          throw new Error(response.data.error || 'Données invalides');
+        if (response.data.success) {
+          setTree(response.data.data);
+        } else {
+          setError(response.data.error || 'Erreur inconnue');
         }
-
-        setTree(response.data.data);
-      } catch (error) {
-        const errorMessage = handleApiError(error, navigate);
-        message.error(errorMessage);
-        navigate('/trees');
+      } catch (err) {
+        setError(err.response?.data?.error || 'Erreur lors du chargement');
       } finally {
         setLoading(false);
       }
     };
 
     fetchTree();
-  }, [id, navigate]);
+  }, [id]);
 
-  if (loading) {
-    return (
-      <div style={{ textAlign: 'center', marginTop: 100 }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
+  if (loading) return <Spin style={{ display: 'block', margin: '4rem auto' }} size="large" />;
 
-  if (!tree) {
-    return (
-      <div style={{ textAlign: 'center', marginTop: 100 }}>
-        <InfoCircleOutlined style={{ fontSize: 48, color: '#ccc' }} />
-        <Paragraph style={{ marginTop: 16, fontSize: 16 }}>
-          Aucune donnée disponible pour cet arbre
-        </Paragraph>
-        <Button type="primary" onClick={() => navigate('/trees')}>
-          Retour à la liste
-        </Button>
-      </div>
-    );
-  }
+  if (error) return <Alert type="error" message={error} showIcon style={{ margin: 24 }} />;
 
-  const coords = tree.location?.coordinates || [0, 0];
-  const [lng, lat] = coords;
+  if (!tree) return <Alert type="warning" message="Aucune donnée à afficher." showIcon style={{ margin: 24 }} />;
+
+  const showValue = (val) => (val !== undefined && val !== null && val !== '' ? val : '-');
 
   return (
-    <div style={{ maxWidth: 900, margin: 'auto', padding: 24 }}>
-      <Button 
-        type="default" 
-        icon={<LeftOutlined />} 
-        onClick={() => navigate(-1)} 
-        style={{ marginBottom: 20 }}
-      >
-        Retour à la liste
-      </Button>
+    <Card
+      bordered={false}
+      style={{
+        maxWidth: 720,
+        margin: '2rem auto',
+        borderRadius: 14,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+        backgroundColor: '#f9f9f9',
+        padding: '2rem 2.5rem',
+      }}
+    >
+      <Title level={2} style={{ color: '#2e7d32', marginBottom: '0.4rem', borderBottom: '3px solid #2e7d32', paddingBottom: 8 }}>
+        {showValue(tree.name)}
+      </Title>
 
-      <Card
-        title={<Title level={3} style={{ marginBottom: 0 }}>{tree.name}</Title>}
-        extra={tree.canEdit && (
-          <Button 
-            type="primary" 
-            icon={<EditOutlined />}
-            onClick={() => navigate(`/trees/${id}/edit`)}
-          >
-            Modifier
-          </Button>
-        )}
-        bordered={false}
-        style={{ borderRadius: 12, boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}
-      >
-        {/* Carousel images */}
-        {tree.images?.length > 0 ? (
-          <Carousel autoplay dotPosition="bottom" style={{ marginBottom: 24, borderRadius: 12, overflow: 'hidden' }}>
-            {tree.images.map((imgUrl, index) => (
-              <div key={index}>
-                <img
-                  src={`http://localhost:5000/${imgUrl}`} 
-                  alt={`Arbre ${tree.name} - image ${index + 1}`}
-                  style={{ width: '100%', maxHeight: 400, objectFit: 'cover', borderRadius: 12 }}
-                />
-              </div>
-            ))}
-          </Carousel>
-        ) : (
-          <div style={{ textAlign: 'center', padding: 60, color: '#999' }}>
-            <InfoCircleOutlined style={{ fontSize: 64 }} />
-            <Paragraph style={{ marginTop: 12 }}>Pas d'images disponibles</Paragraph>
-          </div>
-        )}
-
-        <Descriptions
-          bordered
-          column={1}
-          labelStyle={{ fontWeight: 'bold', width: 180 }}
-          contentStyle={{ fontSize: 16 }}
-          size="middle"
+      {/* Images en haut, centrées */}
+      {tree.images && tree.images.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 20,
+            flexWrap: 'wrap',
+            marginTop: 16,
+            marginBottom: 32,
+            justifyContent: 'center',
+          }}
         >
-          <Descriptions.Item label="Espèce">{tree.species || 'N/A'}</Descriptions.Item>
-          <Descriptions.Item label="Âge">{tree.age} ans</Descriptions.Item>
-          <Descriptions.Item label="Hauteur">{tree.height} m</Descriptions.Item>
-          <Descriptions.Item label="Circonférence">{tree.circumference} m</Descriptions.Item>
-          <Descriptions.Item label="Adresse">{tree.address || 'Non renseignée'}</Descriptions.Item>
-          <Descriptions.Item label="Quartier">{tree.district || 'Non renseigné'}</Descriptions.Item>
-          <Descriptions.Item label="Statut de santé">
-            <Badge 
-              color={healthStatusColors[tree.healthStatus] || 'gray'} 
-              text={tree.healthStatus ? tree.healthStatus.charAt(0).toUpperCase() + tree.healthStatus.slice(1) : 'Inconnu'} 
+          {tree.images.map((img, idx) => (
+            <Image
+              key={idx}
+              src={`http://localhost:5000/${img}`}
+              alt={`Image ${idx + 1} de l'arbre ${tree.name}`}
+              style={{
+                width: 250,
+                height: 250,
+                borderRadius: 14,
+                objectFit: 'cover',
+                boxShadow: '0 6px 18px rgba(0,0,0,0.18)',
+                transition: 'transform 0.3s ease',
+                cursor: 'pointer',
+              }}
+              preview={{ mask: <div style={{ color: '#fff' }}>Voir l'image</div> }}
+              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.05)')}
+              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
             />
-          </Descriptions.Item>
-          {tree.description && (
-            <Descriptions.Item label="Description">
-              <Paragraph ellipsis={{ rows: 4, expandable: true, symbol: 'plus' }}>
-                {tree.description}
-              </Paragraph>
-            </Descriptions.Item>
-          )}
-        </Descriptions>
-
-        <div style={{ marginTop: 32 }}>
-          <Title level={5}><EnvironmentOutlined /> Localisation GPS</Title>
-          <div style={{ height: 320, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.15)' }}>
-            <MapContainer 
-              center={[lat, lng]} 
-              zoom={15} 
-              scrollWheelZoom={false} 
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <Marker position={[lat, lng]}>
-                <Popup>{tree.name}</Popup>
-              </Marker>
-            </MapContainer>
-          </div>
+          ))}
         </div>
-      </Card>
-    </div>
+      )}
+
+      <div style={{ maxWidth: 600 }}>
+       
+        <Paragraph style={{ fontSize: 16 }}>
+  <Text strong>Espèce :</Text> <Text style={{ fontStyle: 'italic' }}>{showValue(tree.species)}</Text>
+</Paragraph>
+         <Paragraph style={{ fontSize: 16 }}>
+          <Text strong>Genre :</Text> {showValue(tree.genus)}
+        </Paragraph>
+        <Paragraph style={{ fontSize: 16 }}>
+          <Text strong>Famille :</Text> {showValue(tree.family)}
+        </Paragraph>
+        <Paragraph style={{ fontSize: 16 }}>
+          <Text strong>Ordre :</Text> {showValue(tree.order)}
+        </Paragraph>
+        <Paragraph style={{ fontSize: 16 }}>
+          <Text strong>Type :</Text> {showValue(tree.type)}
+        </Paragraph>
+        <Paragraph style={{ fontSize: 16 }}>
+          <Text strong>Espace vert :</Text> {showValue(tree.greenSpace)}
+        </Paragraph>
+        <Paragraph style={{ fontSize: 16 }}>
+          <Text strong>Délégation :</Text> {showValue(tree.district)}
+        </Paragraph>
+        <Paragraph style={{ fontSize: 16 }}>
+          <Text strong>Quartier :</Text> {showValue(tree.neighborhood)}
+        </Paragraph>
+        <Paragraph style={{ fontSize: 16 }}>
+          <Text strong>Date de plantation :</Text>{' '}
+          {tree.plantingDate ? new Date(tree.plantingDate).toLocaleDateString('fr-FR') : '-'}
+        </Paragraph>
+        <Paragraph style={{ fontSize: 16 }}>
+          <Text strong>Âge :</Text> {tree.age != null ? `${tree.age} ans` : '-'}
+        </Paragraph>
+        <Paragraph style={{ fontSize: 16 }}>
+          <Text strong>Hauteur :</Text> {tree.height != null ? `${tree.height} m` : '-'}
+        </Paragraph>
+        <Paragraph style={{ fontSize: 16 }}>
+          <Text strong>Circonférence :</Text> {tree.circumference != null ? `${tree.circumference} cm` : '-'}
+        </Paragraph>
+        <Paragraph style={{ fontSize: 16 }}>
+          <Text strong>Coordonnées GPS :</Text>{' '}
+          {tree.location && tree.location.coordinates
+            ? `${tree.location.coordinates[1].toFixed(6)}, ${tree.location.coordinates[0].toFixed(6)}`
+            : '-'}
+        </Paragraph>
+
+        {tree.description && (
+          <Paragraph style={{ fontSize: 16 }}>
+            <Text strong>Description :</Text> {tree.description}
+          </Paragraph>
+        )}
+      </div>
+    </Card>
   );
 };
 
 export default TreeDetails;
-

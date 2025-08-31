@@ -1,7 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Avatar, Button, Divider, Typography, Space } from 'antd';
-import { UserOutlined, EditOutlined, MailOutlined } from '@ant-design/icons';
+import {
+  Card,
+  Avatar,
+  Button,
+  Divider,
+  Typography,
+  Space,
+  Row,
+  Col,
+  Spin,
+  Tag,
+  Badge
+} from 'antd';
+import {
+  UserOutlined,
+  MailOutlined,
+  IdcardOutlined,
+  CrownOutlined,
+  TeamOutlined
+} from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -11,44 +29,89 @@ const ProfilePage = ({ user }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Vérification des données utilisateur
     const checkUserData = () => {
-      if (user) {
+      // Priorité à la prop user si elle existe et est valide
+      if (user?.id) {
         setProfileData(user);
-      } else {
-        const storedUser = {
-          id: localStorage.getItem('userId'),
-          username: localStorage.getItem('username'),
-          email: localStorage.getItem('email'),
-          role: localStorage.getItem('role'),
-          avatar: localStorage.getItem('avatar')
-        };
-
-        if (storedUser.id && storedUser.username) {
-          setProfileData(storedUser);
-        } else {
-          navigate('/login');
-        }
+        setLoading(false);
+        return;
       }
+
+      // Sinon, vérifier le localStorage
+      const storedUser = {
+        id: localStorage.getItem('userId'),
+        username: localStorage.getItem('username'),
+        email: localStorage.getItem('userEmail'),
+        role: localStorage.getItem('userRole'),
+        avatar: localStorage.getItem('avatarUrl'),
+      };
+
+      console.log('Données du localStorage:', storedUser);
+
+      if (storedUser.id && storedUser.username) {
+        setProfileData({
+          ...storedUser,
+          email: storedUser.email || 'Non disponible',
+          role: storedUser.role || 'Utilisateur',
+        });
+      } else {
+        console.error('Données utilisateur insuffisantes');
+        navigate('/login');
+      }
+      
       setLoading(false);
     };
 
     checkUserData();
   }, [user, navigate]);
 
+  const renderRoleBadge = () => {
+    if (!profileData?.role) return null;
+
+    const role = profileData.role.toLowerCase();
+    let icon, color, text;
+
+    switch(role) {
+      case 'superadmin':
+        icon = <CrownOutlined />;
+        color = 'gold';
+        text = 'Super Admin';
+        break;
+      case 'admin':
+        icon = <TeamOutlined />;
+        color = 'volcano';
+        text = 'Admin';
+        break;
+      default:
+        return null;
+    }
+
+    return (
+      <Badge.Ribbon 
+        text={text} 
+        color={color}
+        placement="start"
+        style={{ top: -16 }}
+      >
+        <div style={{ width: 0, height: 0 }} /> {/* Espaceur invisible */}
+      </Badge.Ribbon>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="profile-loading">
-        <p>Chargement de votre profil...</p>
+      <div style={{ textAlign: 'center', marginTop: '20vh' }}>
+        <Spin size="large" tip="Chargement du profil..." />
       </div>
     );
   }
 
   if (!profileData) {
     return (
-      <div className="profile-error">
-        <p>Impossible de charger les données du profil</p>
-        <Button type="primary" onClick={() => navigate('/login')}>
+      <div style={{ textAlign: 'center', marginTop: '20vh' }}>
+        <Text type="danger">Impossible de charger les données du profil</Text>
+        <br />
+        <Button type="primary" onClick={() => navigate('/login')} style={{ marginTop: 16 }}>
           Se connecter
         </Button>
       </div>
@@ -56,43 +119,54 @@ const ProfilePage = ({ user }) => {
   }
 
   return (
-    <div className="profile-container">
-      <Card
-        title={
-          <Space>
-            <Avatar 
-              size={64} 
-              src={profileData.avatar} 
-              icon={<UserOutlined />}
-            />
-            <Title level={3}>{profileData.username}</Title>
-          </Space>
-        }
-      >
-        <Divider orientation="left">Informations personnelles</Divider>
-        
-        <div className="profile-info">
-          <Space direction="vertical">
-            <Text strong>
-              <MailOutlined /> Email: {profileData.email || 'Non renseigné'}
-            </Text>
-            <Text strong>
-              Rôle: {profileData.role}
-            </Text>
-          </Space>
-        </div>
-
-        <Divider />
-
-        <Button 
-          type="primary" 
-          icon={<EditOutlined />}
-          onClick={() => navigate('/profile/edit')}
+    <Row justify="center" style={{ marginTop: 40 }}>
+      <Col xs={22} sm={18} md={12} lg={10}>
+        <Card
+          hoverable
+          bordered={false}
+          style={{
+            borderRadius: 16,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            padding: 24,
+          }}
         >
-          Modifier le profil
-        </Button>
-      </Card>
-    </div>
+          <div style={{ textAlign: 'center', marginBottom: 24, position: 'relative' }}>
+            {renderRoleBadge()}
+            <Avatar
+              size={96}
+              src={profileData.avatar || null}
+              icon={!profileData.avatar ? <UserOutlined /> : null}
+              style={{ marginBottom: 12 }}
+            />
+            <Title level={3}>{profileData.username || 'Utilisateur'}</Title>
+            {profileData.role && ['admin', 'superadmin'].includes(profileData.role.toLowerCase()) && (
+              <Tag 
+                icon={profileData.role.toLowerCase() === 'superadmin' ? <CrownOutlined /> : <TeamOutlined />}
+                color={profileData.role.toLowerCase() === 'superadmin' ? 'gold' : 'volcano'}
+                style={{ marginTop: 8 }}
+              >
+                {profileData.role}
+              </Tag>
+            )}
+          </div>
+
+          <Divider orientation="left">Informations personnelles</Divider>
+
+          <Space direction="vertical" size="middle">
+            <Text>
+              <MailOutlined style={{ marginRight: 8 }} />
+              <strong>Email :</strong> {profileData.email || 'Non renseigné'}
+            </Text>
+            <Text>
+              <IdcardOutlined style={{ marginRight: 8 }} />
+              <strong>Rôle :</strong> {profileData.role || 'Utilisateur'}
+            </Text>
+          </Space>
+
+          <Divider />
+        </Card>
+      </Col>
+    </Row>
   );
 };
 

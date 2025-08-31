@@ -1,41 +1,33 @@
 const mongoose = require("mongoose");
 
+// Schéma pour le compteur auto-incrémenté
+const counterSchema = new mongoose.Schema({
+  _id: { type: String, required: true },
+  seq: { type: Number, default: 0 }
+});
+
+const Counter = mongoose.model('Counter', counterSchema);
+
 const treeSchema = new mongoose.Schema({
-  name: { 
+  code: { 
     type: String, 
-    required: true,
-    trim: true,
-    maxlength: 100
+    unique: true,
+    immutable: true, // Empêche toute modification après création
   },
-  scientificName: {
-    type: String,
-    trim: true,
-    maxlength: 100
-  },
-  species: { 
-    type: String, 
-    required: true,
-    trim: true,
-    maxlength: 100
-  },
-  age: { 
-    type: Number, 
-    required: true,
-    min: 1,
-    max: 2000
-  },
-  height: {
-    type: Number,
-    min: 0.1,
-    max: 150,
-    required: true
-  },
-  circumference: {
-    type: Number,
-    min: 0.1,
-    required: true
-  },
-  location: { 
+  name: { type: String, required: true, trim: true, maxlength: 100 },
+  genus: { type: String, trim: true, maxlength: 100 },
+  species: { type: String, required: true, trim: true, maxlength: 100 },
+  family: { type: String, trim: true, maxlength: 100 },
+  order: { type: String, trim: true, maxlength: 100 },
+  type: { type: String, trim: true, maxlength: 100 },
+  greenSpace: { type: String, trim: true, maxlength: 100 },
+  district: { type: String, required: true, trim: true, maxlength: 100 },
+  neighborhood: { type: String, trim: true, maxlength: 100 },
+  plantingDate: { type: Date },
+  age: { type: Number, min: 1, max: 2000 },
+  height: { type: Number, min: 0.1, max: 150 },
+  circumference: { type: Number, min: 0.1 },
+  location: {
     type: {
       type: String,
       enum: ['Point'],
@@ -45,72 +37,16 @@ const treeSchema = new mongoose.Schema({
       type: [Number],
       required: true,
       validate: {
-        validator: function(coords) {
-          return coords.length === 2;
-        },
+        validator: coords => coords.length === 2,
         message: "Coordonnées GPS invalides"
       }
     }
   },
-  address: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 200
-  },
-  district: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 50
-  },
-  description: {
-    type: String,
-    trim: true,
-    maxlength: 2000
-  },
-  images: [{
-    type: String,
-    required: true
-  }],
-  addedBy: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User',
-    required: true
-  },
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
-  verificationDate: {
-    type: Date,
-    default: null
-  },
-  verifiedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null
-  },
-  historicalSignificance: {
-    type: String,
-    trim: true,
-    maxlength: 1000
-  },
-  ecologicalValue: {
-    type: String,
-    trim: true,
-    maxlength: 1000
-  },
-  healthStatus: {
-    type: String,
-    enum: ['excellent', 'good', 'fair', 'poor', 'dead'],
-    default: 'good'
-  },
-  conservationStatus: {
-    type: String,
-    enum: ['protected', 'endangered', 'vulnerable', 'common'],
-    default: 'common'
-  }
+  images: [{ type: String, required: true }],
+  addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  isVerified: { type: Boolean, default: false },
+  verificationDate: { type: Date, default: null },
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 }, {
   timestamps: true,
   toJSON: {
@@ -124,7 +60,37 @@ const treeSchema = new mongoose.Schema({
   }
 });
 
-// Index géospatial (utile même avec des coordonnées projetées)
+// Middleware pour générer le code auto-incrémenté
+treeSchema.pre('save', async function(next) {
+  if (this.isNew && !this.code) {
+    try {
+      const counter = await Counter.findByIdAndUpdate(
+        { _id: 'treeCode' },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+      this.code = `TREE-${counter.seq.toString().padStart(6, '0')}`;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  } else if (this.isModified('code')) {
+    next(new Error("Le code ne peut pas être modifié"));
+  } else {
+    next();
+  }
+});
+
+// Bloque les mises à jour directes du code
+treeSchema.pre('findOneAndUpdate', function(next) {
+  if (this._update.code) {
+    next(new Error("Le code ne peut pas être modifié"));
+  } else {
+    next();
+  }
+});
+
 treeSchema.index({ location: '2dsphere' });
+treeSchema.index({ code: 1 }); // Index pour les recherches par code
 
 module.exports = mongoose.model("Tree", treeSchema);

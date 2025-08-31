@@ -5,9 +5,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './Login.css';
 
-// Configuration Axios globale
-axios.defaults.withCredentials = true;
-
 const Login = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -15,27 +12,27 @@ const Login = ({ onLogin }) => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/login", values, {
-
-        headers: { 
+      const response = await axios.post('http://localhost:5000/api/auth/login', {
+        email: values.email,
+        password: values.password,
+      }, {
+        headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
+          'Accept': 'application/json',
+        },
+        withCredentials: true,
       });
 
       const { token, user } = response.data;
-      
-      // Stockage des informations utilisateur
+
       localStorage.setItem('token', token);
-      localStorage.setItem('username', user.username);
+      localStorage.setItem('username', user.name);
       localStorage.setItem('role', user.role);
       localStorage.setItem('avatar', user.avatar || '');
-      
-      // Notification et redirection
-      onLogin(response.data);
-      message.success(`Bienvenue ${user.username} !`);
 
-      // Redirection en fonction du rôle
+      message.success(`Bienvenue ${user.name} !`);
+      onLogin(response.data);
+
       const redirectPath = ['superadmin', 'admin'].includes(user.role)
         ? '/admin/dashboard'
         : '/trees';
@@ -43,18 +40,8 @@ const Login = ({ onLogin }) => {
 
     } catch (error) {
       console.error('Erreur de connexion:', error);
-      
-      const errorMessage = error.response?.data?.error 
-        || error.response?.data?.message 
-        || error.message 
-        || 'Une erreur est survenue lors de la connexion';
-      
+      const errorMessage = error.response?.data?.message || error.message || 'Erreur de connexion';
       message.error(errorMessage);
-
-      // Redirection pour réinitialisation du mot de passe si email non vérifié
-      if (errorMessage.toLowerCase().includes('email') || error.response?.status === 403) {
-        navigate('/forgot-password');
-      }
     } finally {
       setLoading(false);
     }
@@ -64,61 +51,44 @@ const Login = ({ onLogin }) => {
     <div className="login-container">
       <div className="login-card">
         <h1>Connexion</h1>
-        
-        <Form 
+        <Form
           name="login-form"
-          initialValues={{ remember: true }}
-          onFinish={onFinish}
           layout="vertical"
           autoComplete="off"
+          onFinish={onFinish}
         >
-          <Form.Item 
-            name="username" 
-            label="Nom d'utilisateur ou Email"
+          <Form.Item
+            name="email"
+            label="Email"
             rules={[
-              { 
-                required: true, 
-                message: "Veuillez saisir votre nom d'utilisateur ou email" 
-              }
+              { required: true, message: 'Veuillez saisir votre email' },
+              { type: 'email', message: 'Veuillez saisir un email valide' },
             ]}
           >
-            <Input 
-              prefix={<UserOutlined className="site-form-item-icon" />} 
-              placeholder="nom@exemple.com ou nom d'utilisateur" 
-              size="large" 
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="nom@exemple.com"
+              size="large"
             />
           </Form.Item>
 
-          <Form.Item 
-            name="password" 
+          <Form.Item
+            name="password"
             label="Mot de passe"
             rules={[
-              { 
-                required: true, 
-                message: "Veuillez saisir votre mot de passe" 
-              },
-              {
-                min: 6,
-                message: "Le mot de passe doit contenir au moins 6 caractères"
-              }
+              { required: true, message: 'Veuillez saisir votre mot de passe' },
+              { min: 6, message: 'Le mot de passe doit contenir au moins 6 caractères' },
             ]}
           >
-            <Input.Password 
-              prefix={<LockOutlined className="site-form-item-icon" />} 
-              placeholder="••••••" 
-              size="large" 
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="••••••"
+              size="large"
             />
           </Form.Item>
 
           <Form.Item>
-            <Button 
-              type="primary" 
-              htmlType="submit" 
-              loading={loading} 
-              block 
-              size="large"
-              disabled={loading}
-            >
+            <Button type="primary" htmlType="submit" loading={loading} block size="large" disabled={loading}>
               {loading ? 'Connexion en cours...' : 'Se connecter'}
             </Button>
           </Form.Item>

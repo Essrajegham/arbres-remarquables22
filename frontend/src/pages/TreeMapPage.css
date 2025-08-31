@@ -1,57 +1,210 @@
-.tree-map-page {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  padding: 16px;
-  box-sizing: border-box;
+.tree-map-layout {
+  min-height: 100vh;
+  background-color: #F5F5F5;
 }
 
-.search-header {
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.map-card, .details-card, .questionnaire-card, .tree-list-card, .comments-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.3s;
+  background-color: #FFFFFF;
+  border: none;
+}
+
+.map-card:hover, .details-card:hover, .questionnaire-card:hover, 
+.tree-list-card:hover, .comments-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.map-container {
+  height: 600px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.map-type-selector {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+}
+
+.map-type-btn {
+  font-weight: 500;
+  border-radius: 6px !important;
+  transition: all 0.3s ease;
+}
+
+.map-type-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ant-btn-primary {
+  background-color: #2E7D32;
+  border-color: #2E7D32;
+}
+
+.ant-btn-primary:hover {
+  background-color: #4CAF50;
+  border-color: #4CAF50;
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+.tree-popup .leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  padding: 8px;
+  background-color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.tree-popup .leaflet-popup-content {
+  margin: 8px;
+}
+
+.tree-marker-icon {
+  filter: drop-shadow(0 0 4px rgba(46, 125, 50, 0.3));
+}
+
+.ratings-summary {
+  margin-top: 24px;
+  padding: 16px;
+  background-color: #F8F9FA;
+  border-radius: 8px;
+  border: 1px solid #E9ECEF;
+}
+
+.rating-item {
+  display: flex;
+  align-items: center;
   margin-bottom: 12px;
 }
 
-.map-details-wrapper {
-  display: flex;
+.rating-label {
+  width: 120px;
+  font-weight: 500;
+  color: #263238;
+}
+
+.rating-bar-container {
   flex: 1;
+  height: 8px;
+  background-color: #E9ECEF;
+  border-radius: 4px;
+  margin: 0 12px;
   overflow: hidden;
-  min-height: 0; /* évite que la carte déborde */
 }
 
-.map-section {
-  flex: 2;
+.rating-bar {
   height: 100%;
-  min-height: 0;
+  background-color: #4CAF50;
+  border-radius: 4px;
 }
 
-.details-panel {
-  flex: 1;
-  height: 100%;
+.rating-value {
+  width: 40px;
+  text-align: right;
+  font-weight: bold;
+  color: #2E7D32;
+}
+
+.tree-list-footer {
+  background-color: #FFFFFF;
+  padding: 24px;
+}
+
+.comments-section {
+  max-height: 400px;
   overflow-y: auto;
-  padding-left: 16px;
-  max-width: 400px;
-  box-sizing: border-box;
 }
 
-.empty-selection {
-  padding: 16px;
-  font-style: italic;
-  color: #888;
+/* Animation for tree markers */
+.leaflet-marker-icon {
+  transition: transform 0.2s;
 }
 
-/* 📱 Mobile : empile carte et détails */
+.leaflet-marker-icon:hover {
+  transform: scale(1.2);
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
-  .map-details-wrapper {
-    flex-direction: column;
+  .map-container {
+    height: 400px;
   }
+  
+  .right-column {
+    margin-top: 24px;
+  }
+}
 
-  .map-section {
-    height: 300px;
-  }
+/* Custom scrollbar for comments */
+.comments-section::-webkit-scrollbar {
+  width: 6px;
+}
 
-  .details-panel {
-    height: auto;
-    max-width: 100%;
-    padding-left: 0;
-    margin-top: 12px;
-  }
+.comments-section::-webkit-scrollbar-track {
+  background: #F1F1F1;
+  border-radius: 10px;
+}
+
+.comments-section::-webkit-scrollbar-thumb {
+  background: #BDBDBD;
+  border-radius: 10px;
+}
+
+.comments-section::-webkit-scrollbar-thumb:hover {
+  background: #9E9E9E;
+}
+
+/* Tab styles */
+.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #2E7D32 !important;
+}
+
+.ant-tabs-ink-bar {
+  background: #2E7D32 !important;
+}
+
+/* Button hover effects */
+.ant-btn-primary {
+  transition: all 0.3s;
+}
+
+.ant-btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* Card header styles */
+.ant-card-head {
+  border-bottom: 2px solid #81C784 !important;
+}
+
+/* Input focus styles */
+.ant-input:focus, .ant-input-focused {
+  border-color: #4CAF50 !important;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2) !important;
+}
+
+/* Rate star colors */
+.ant-rate-star-full {
+  color: #FFA000 !important;
 }
